@@ -7,7 +7,6 @@ import net.minecraft.client.gui.hud.ChatHud;
 import net.minecraft.text.Text;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.ConcurrentLinkedQueue;
 
 public final class GlitchIdentityFabricClient implements ClientModInitializer {
     private static final ConcurrentLinkedDeque<GlitchPayload> PENDING_DEATHS =
