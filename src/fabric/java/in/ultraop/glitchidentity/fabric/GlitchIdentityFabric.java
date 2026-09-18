@@ -7,28 +7,23 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.command.argument.EntityArgumentType;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.UUID;
 
 public final class GlitchIdentityFabric implements ModInitializer {
     public static final String MOD_ID = "glitchidentity";
     public static final GlitchStore STORE = new GlitchStore();
 
     private static final Map<String, Long> SUPPRESS_DEATH_MESSAGES = new ConcurrentHashMap<>();
-    private static final Path STORE_FILE = Path.of("config", "glitchidentity", "players.txt");
 
     @Override
     public void onInitialize() {
-        loadStore();
+        FabricConfig.load(STORE);
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
             dispatcher.register(
@@ -40,7 +35,7 @@ public final class GlitchIdentityFabric implements ModInitializer {
                                 var player = EntityArgumentType.getPlayer(ctx, "player");
                                 boolean added = STORE.add(player.getUuid());
                                 if (added) {
-                                    saveStore();
+                                    FabricConfig.save(STORE);
                                 }
                                 ctx.getSource().sendFeedback(
                                     () -> Text.literal(added ? "§aGlitch enabled." : "§eAlready enabled."),
@@ -56,7 +51,7 @@ public final class GlitchIdentityFabric implements ModInitializer {
                                 var player = EntityArgumentType.getPlayer(ctx, "player");
                                 boolean removed = STORE.remove(player.getUuid());
                                 if (removed) {
-                                    saveStore();
+                                    FabricConfig.save(STORE);
                                 }
                                 ctx.getSource().sendFeedback(
                                     () -> Text.literal(removed ? "§aGlitch removed." : "§ePlayer is not configured."),
@@ -68,16 +63,40 @@ public final class GlitchIdentityFabric implements ModInitializer {
                     )
                     .then(CommandManager.literal("list")
                         .executes(ctx -> {
-                            ctx.getSource().sendFeedback(
-                                () -> Text.literal("§dGlitch players: §f" + STORE.all().size()),
-                                false
-                            );
+                            var server = ctx.getSource().getServer();
+                            var lines = STORE.all().stream()
+                                .map(id -> {
+                                    ServerPlayerEntity online = server.getPlayerManager().getPlayer(id);
+                                    return online != null
+                                        ? online.getName().getString()
+                                        : id.toString();
+                                })
+                                .sorted()
+                                .toList();
+
+                            if (lines.isEmpty()) {
+                                ctx.getSource().sendFeedback(
+                                    () -> Text.literal("§7No glitch players configured."),
+                                    false
+                                );
+                            } else {
+                                ctx.getSource().sendFeedback(
+                                    () -> Text.literal("§dGlitch players:"),
+                                    false
+                                );
+                                for (String name : lines) {
+                                    ctx.getSource().sendFeedback(
+                                        () -> Text.literal("§7- §f" + name),
+                                        false
+                                    );
+                                }
+                            }
                             return 1;
                         })
                     )
                     .then(CommandManager.literal("reload")
                         .executes(ctx -> {
-                            loadStore();
+                            FabricConfig.load(STORE);
                             ctx.getSource().sendFeedback(
                                 () -> Text.literal("§aGlitchIdentity reloaded."),
                                 false
@@ -143,48 +162,5 @@ public final class GlitchIdentityFabric implements ModInitializer {
 
             return true;
         });
-    }
-
-    private static void loadStore() {
-        STORE.clear();
-
-        if (!Files.exists(STORE_FILE)) {
-            return;
-        }
-
-        try {
-            for (String line : Files.readAllLines(STORE_FILE)) {
-                String value = line.trim();
-                if (value.isEmpty()) {
-                    continue;
-                }
-
-                try {
-                    STORE.add(UUID.fromString(value));
-                } catch (IllegalArgumentException ignored) {
-                    // Ignore malformed UUID entries so one bad line cannot break loading.
-                }
-            }
-        } catch (IOException ignored) {
-            // Keep an empty in-memory store if the configuration file cannot be read.
-        }
-    }
-
-    private static void saveStore() {
-        try {
-            Path parent = STORE_FILE.getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
-            }
-
-            StringBuilder data = new StringBuilder();
-            for (UUID id : STORE.all()) {
-                data.append(id).append(System.lineSeparator());
-            }
-
-            Files.writeString(STORE_FILE, data.toString());
-        } catch (IOException ignored) {
-            // Runtime behavior remains available even if persistence is temporarily unavailable.
-        }
     }
 }
