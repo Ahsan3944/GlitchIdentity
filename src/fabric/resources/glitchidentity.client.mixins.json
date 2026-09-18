@@ -3,6 +3,7 @@
   "package": "in.ultraop.glitchidentity.fabric.mixin",
   "compatibilityLevel": "JAVA_21",
   "client": [
+    "ChatHudMixin",
     "ChatHudLineMixin"
   ],
   "injectors": {
