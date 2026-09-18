@@ -16,7 +16,7 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
         ClientPlayNetworking.registerGlobalReceiver(FabricNetwork.GLITCH, (payload, context) -> {
             context.client().execute(() -> {
                 victim = payload.victim();
-                killer = payload.killer();
+                killer = "GLITCH";
                 until = System.currentTimeMillis() + 6000L;
             });
         });
