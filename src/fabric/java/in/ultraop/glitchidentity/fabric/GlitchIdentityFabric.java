@@ -5,24 +5,14 @@ import in.ultraop.glitchidentity.core.GlitchStore;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
-import net.fabricmc.fabric.api.message.v1.ServerMessageEvents;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-
 public final class GlitchIdentityFabric implements ModInitializer {
     public static final String MOD_ID = "glitchidentity";
     public static final GlitchStore STORE = new GlitchStore();
-
-    private static final ConcurrentLinkedQueue<PendingSuppression> SUPPRESS_DEATH_MESSAGES =
-        new ConcurrentLinkedQueue<>();
-
-    private record PendingSuppression(String message, long expiresAt) {}
 
     @Override
     public void onInitialize() {
@@ -119,9 +109,12 @@ public final class GlitchIdentityFabric implements ModInitializer {
             )
         );
 
-        ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
+        // Prepare the client-side replacement before vanilla sends the death packet.
+        // This lets the Fabric client cancel the real death line and render the animated
+        // replacement inside the normal chat HUD.
+        ServerLivingEntityEvents.ALLOW_DEATH.register((entity, damageSource, damageAmount) -> {
             if (!(entity instanceof ServerPlayerEntity victim)) {
-                return;
+                return true;
             }
 
             var attacker = damageSource.getAttacker();
@@ -130,40 +123,14 @@ public final class GlitchIdentityFabric implements ModInitializer {
             boolean glitchVictim = STORE.contains(victim.getUuid());
             boolean glitchKiller = killer != null && STORE.contains(killer.getUuid());
 
-            if (!glitchVictim && !glitchKiller) {
-                return;
-            }
-
-            Text vanillaDeathMessage = victim.getDamageTracker().getDeathMessage();
-            SUPPRESS_DEATH_MESSAGES.add(
-                new PendingSuppression(
-                    vanillaDeathMessage.getString(),
-                    System.currentTimeMillis() + 3000L
-                )
-            );
-
-            FabricNetwork.sendGlitch(
-                victim.getEntityWorld(),
-                victim,
-                killer,
-                glitchVictim,
-                glitchKiller
-            );
-        });
-
-        ServerMessageEvents.ALLOW_GAME_MESSAGE.register((server, message, overlay) -> {
-            if (overlay) {
-                return true;
-            }
-
-            long now = System.currentTimeMillis();
-            SUPPRESS_DEATH_MESSAGES.removeIf(entry -> entry.expiresAt() < now);
-
-            for (PendingSuppression entry : SUPPRESS_DEATH_MESSAGES) {
-                if (entry.message().equals(message.getString()) && entry.expiresAt() >= now) {
-                    SUPPRESS_DEATH_MESSAGES.remove(entry);
-                    return false;
-                }
+            if (glitchVictim || glitchKiller) {
+                FabricNetwork.sendGlitch(
+                    victim.getEntityWorld(),
+                    victim,
+                    killer,
+                    glitchVictim,
+                    glitchKiller
+                );
             }
 
             return true;
