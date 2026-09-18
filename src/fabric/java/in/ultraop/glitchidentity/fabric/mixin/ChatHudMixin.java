@@ -25,6 +25,10 @@ public abstract class ChatHudMixin {
         boolean bool,
         CallbackInfo ci
     ) {
-        GlitchIdentityFabricClient.renderChatLine(draw, textRenderer);
+        GlitchIdentityFabricClient.renderChatLine(
+            draw,
+            textRenderer,
+            draw.getScaledWindowHeight()
+        );
     }
 }
