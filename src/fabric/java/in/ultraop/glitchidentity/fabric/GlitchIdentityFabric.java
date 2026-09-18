@@ -25,7 +25,7 @@ public final class GlitchIdentityFabric implements ModInitializer {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
             dispatcher.register(
                 CommandManager.literal("glitch")
-                    .requires(src -> { var p = src.getPlayer(); return p != null && p.getPermissionLevel() >= 2; })
+                    .requires(src -> { var p = src.getPlayer(); return p != null && p.hasPermissionLevel(2); })
                     .then(CommandManager.literal("add")
                         .then(CommandManager.argument("player", EntityArgumentType.player())
                             .executes(ctx -> {
@@ -82,13 +82,6 @@ public final class GlitchIdentityFabric implements ModInitializer {
             )
         );
 
-        /*
-         * AFTER_DEATH covers both:
-         * 1) a configured player killing someone, and
-         * 2) a configured player being killed.
-         *
-         * The real name of a configured player is never placed in the S2C payload.
-         */
         ServerLivingEntityEvents.AFTER_DEATH.register((entity, damageSource) -> {
             if (!(entity instanceof ServerPlayerEntity victim)) {
                 return;
@@ -116,11 +109,6 @@ public final class GlitchIdentityFabric implements ModInitializer {
             );
         });
 
-        /*
-         * Prevent the original vanilla death line from exposing a configured
-         * player's real name. Fabric documents GAME_MESSAGE as covering death
-         * messages and ALLOW_GAME_MESSAGE can cancel the broadcast.
-         */
         ServerMessageEvents.ALLOW_GAME_MESSAGE.register((server, message, overlay) -> {
             if (overlay) {
                 return true;
