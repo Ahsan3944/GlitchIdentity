@@ -16,6 +16,7 @@ public final class FabricNetwork {
     public static final Identifier ID = Identifier.of("glitchidentity", "glitch");
 
     public record GlitchPayload(
+        int victimEntityId,
         String victim,
         String killer,
         boolean glitchVictim,
@@ -26,6 +27,7 @@ public final class FabricNetwork {
 
         public static final PacketCodec<RegistryByteBuf, GlitchPayload> CODEC =
             PacketCodec.tuple(
+                PacketCodecs.VAR_INT, GlitchPayload::victimEntityId,
                 PacketCodecs.STRING, GlitchPayload::victim,
                 PacketCodecs.STRING, GlitchPayload::killer,
                 PacketCodecs.BOOLEAN, GlitchPayload::glitchVictim,
@@ -54,6 +56,7 @@ public final class FabricNetwork {
         String safeKiller = killer == null || glitchKiller ? "" : killer.getName().getString();
 
         GlitchPayload payload = new GlitchPayload(
+            victim.getId(),
             safeVictim,
             safeKiller,
             glitchVictim,
@@ -66,6 +69,7 @@ public final class FabricNetwork {
             if (ServerPlayNetworking.canSend(player, GlitchPayload.ID)) {
                 ServerPlayNetworking.send(player, payload);
             } else {
+                // Vanilla clients do not have the client-side mixin required for animation.
                 player.sendMessage(fallback);
             }
         }
@@ -88,7 +92,7 @@ public final class FabricNetwork {
         MutableText message = Text.empty();
 
         if (glitchVictim) {
-            message = message.append(Text.literal(victimFrame.text()));
+            message = message.copy().append(Text.literal(victimFrame.text()));
         } else {
             message = message.copy().append(Text.literal(victim.getName().getString()));
         }
