@@ -25,11 +25,7 @@ public final class GlitchIdentityFabric implements ModInitializer {
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
             dispatcher.register(
                 CommandManager.literal("glitch")
-                    .requires(src -> {
-                        var player = src.getPlayer();
-                        return player != null
-                            && src.getServer().getPlayerManager().isOperator(player.getGameProfile());
-                    })
+                    .requires(CommandManager.requirePermissionLevel(CommandManager.ADMINS_CHECK))
                     .then(CommandManager.literal("add")
                         .then(CommandManager.argument("player", EntityArgumentType.player())
                             .executes(ctx -> {
