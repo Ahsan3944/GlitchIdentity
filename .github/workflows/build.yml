@@ -22,9 +22,12 @@ jobs:
       - name: Build and test
         run: gradle clean test build --stacktrace
 
+      - name: Show build outputs
+        run: ls -lah build/libs
+
       - name: Upload universal JAR
         uses: actions/upload-artifact@v4
         with:
           name: GlitchIdentity-universal
-          path: build/libs/*-universal.jar
+          path: build/libs/*.jar
           if-no-files-found: error
