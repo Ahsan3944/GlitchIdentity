@@ -6,36 +6,28 @@ import net.minecraft.text.PlainTextContent;
 import net.minecraft.text.Style;
 import net.minecraft.text.Text;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public final class AnimatedGlitchText implements Text {
-    private final String victim;
-    private final String killer;
+    private final Text template;
     private final boolean glitchVictim;
     private final boolean glitchKiller;
-
     private final GlitchSegment victimGlitch = new GlitchSegment();
     private final GlitchSegment killerGlitch = new GlitchSegment();
 
-    private AnimatedGlitchText(
-        String victim,
-        String killer,
-        boolean glitchVictim,
-        boolean glitchKiller
-    ) {
-        this.victim = victim;
-        this.killer = killer;
+    private AnimatedGlitchText(Text template, boolean glitchVictim, boolean glitchKiller) {
+        this.template = template;
         this.glitchVictim = glitchVictim;
         this.glitchKiller = glitchKiller;
     }
 
     public static AnimatedGlitchText death(
-        String victim,
-        String killer,
+        Text template,
         boolean glitchVictim,
         boolean glitchKiller
     ) {
-        return new AnimatedGlitchText(victim, killer, glitchVictim, glitchKiller);
+        return new AnimatedGlitchText(template, glitchVictim, glitchKiller);
     }
 
     @Override
@@ -55,37 +47,67 @@ public final class AnimatedGlitchText implements Text {
 
     @Override
     public String getString() {
-        String victimText = glitchVictim ? victimGlitch.snapshot().text() : victim;
-        if (killer == null || killer.isEmpty()) {
-            return victimText + " died";
-        }
-
-        String killerText = glitchKiller ? killerGlitch.snapshot().text() : killer;
-        return victimText + " was slain by " + killerText;
+        return renderString(template.getString());
     }
 
     @Override
     public OrderedText asOrderedText() {
-        OrderedText victimText = glitchVictim
-            ? victimGlitch.asOrderedText()
-            : Text.literal(victim).asOrderedText();
+        String value = template.getString();
+        List<OrderedText> parts = new ArrayList<>();
+        int cursor = 0;
 
-        OrderedText separator = Text.literal(
-            killer == null || killer.isEmpty() ? " died" : " was slain by "
-        ).asOrderedText();
+        while (cursor < value.length()) {
+            int victimAt = glitchVictim ? value.indexOf(GlitchTextSanitizer.VICTIM_MARKER, cursor) : -1;
+            int killerAt = glitchKiller ? value.indexOf(GlitchTextSanitizer.KILLER_MARKER, cursor) : -1;
 
-        if (killer == null || killer.isEmpty()) {
-            return OrderedText.concat(victimText, separator);
+            int markerAt;
+            GlitchSegment segment;
+
+            if (victimAt < 0) {
+                markerAt = killerAt;
+                segment = killerGlitch;
+            } else if (killerAt < 0) {
+                markerAt = victimAt;
+                segment = victimGlitch;
+            } else if (victimAt < killerAt) {
+                markerAt = victimAt;
+                segment = victimGlitch;
+            } else {
+                markerAt = killerAt;
+                segment = killerGlitch;
+            }
+
+            if (markerAt < 0) {
+                parts.add(Text.literal(value.substring(cursor)).asOrderedText());
+                break;
+            }
+
+            if (markerAt > cursor) {
+                parts.add(Text.literal(value.substring(cursor, markerAt)).asOrderedText());
+            }
+
+            parts.add(segment.asOrderedText());
+
+            if (segment == victimGlitch) {
+                cursor = markerAt + GlitchTextSanitizer.VICTIM_MARKER.length();
+            } else {
+                cursor = markerAt + GlitchTextSanitizer.KILLER_MARKER.length();
+            }
         }
 
-        OrderedText killerText = glitchKiller
-            ? killerGlitch.asOrderedText()
-            : Text.literal(killer).asOrderedText();
+        return parts.isEmpty() ? OrderedText.EMPTY : OrderedText.concat(parts);
+    }
 
-        return OrderedText.concat(
-            OrderedText.concat(victimText, separator),
-            killerText
-        );
+    private String renderString(String value) {
+        return value
+            .replace(
+                GlitchTextSanitizer.VICTIM_MARKER,
+                glitchVictim ? victimGlitch.snapshot().text() : ""
+            )
+            .replace(
+                GlitchTextSanitizer.KILLER_MARKER,
+                glitchKiller ? killerGlitch.snapshot().text() : ""
+            );
     }
 
     private static final class GlitchSegment {
