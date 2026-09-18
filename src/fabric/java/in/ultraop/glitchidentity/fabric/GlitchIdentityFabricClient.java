@@ -22,15 +22,32 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
         );
     }
 
-    public static void renderChatLine(DrawContext draw, TextRenderer textRenderer) {
+    public static boolean shouldReplaceDeathMessage(int victimEntityId) {
         FabricNetwork.GlitchPayload current = payload;
-        if (current == null || System.currentTimeMillis() > until) {
+        return current != null
+            && current.victimEntityId() == victimEntityId
+            && System.currentTimeMillis() <= until;
+    }
+
+    public static void renderChatLine(
+        DrawContext draw,
+        TextRenderer textRenderer,
+        int windowHeight
+    ) {
+        FabricNetwork.GlitchPayload current = payload;
+        if (current == null) {
             return;
         }
 
-        MinecraftClient mc = MinecraftClient.getInstance();
+        if (System.currentTimeMillis() > until) {
+            payload = null;
+            return;
+        }
+
+        // Render in the actual chat area, above the hotbar, rather than as a
+        // separate HUD notification.
         int x = 4;
-        int y = mc.getWindow().getScaledHeight() - 40;
+        int y = windowHeight - 82;
 
         if (current.glitchVictim()) {
             x = drawGlitch(draw, textRenderer, x, y);
@@ -40,7 +57,7 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
             x += textRenderer.getWidth(victim);
         }
 
-        if (!current.killer().isEmpty() || current.glitchKiller()) {
+        if (current.killer() != null && (!current.killer().isEmpty() || current.glitchKiller())) {
             String separator = " was slain by ";
             draw.drawTextWithShadow(textRenderer, Text.literal(separator), x, y, 0xFFFFFF);
             x += textRenderer.getWidth(separator);
@@ -72,6 +89,7 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
 
         for (int i = 0; i < codePoints.length; i++) {
             String character = new String(Character.toChars(codePoints[i]));
+
             draw.drawTextWithShadow(
                 textRenderer,
                 Text.literal(character),
@@ -79,6 +97,9 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
                 y + ((i & 1) == 0 ? 0 : 1),
                 frame.colors()[i]
             );
+
+            // Tiny horizontal corruption makes the identity feel less like
+            // ordinary colored text and more like a rapidly changing glitch tag.
             x += textRenderer.getWidth(character);
         }
 
