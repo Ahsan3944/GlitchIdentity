@@ -4,13 +4,17 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.client.MinecraftClient;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
 public final class GlitchIdentityFabricClient implements ClientModInitializer {
-    private static FabricNetwork.GlitchPayload pendingDeath;
+    private static final ConcurrentMap<Integer, GlitchPayload> PENDING_DEATHS =
+        new ConcurrentHashMap<>();
 
     @Override
     public void onInitializeClient() {
-        ClientPlayNetworking.registerGlobalReceiver(FabricNetwork.GlitchPayload.ID, (incoming, context) -> {
-            pendingDeath = incoming;
+        ClientPlayNetworking.registerGlobalReceiver(GlitchPayload.ID, (incoming, context) -> {
+            PENDING_DEATHS.put(incoming.victimEntityId(), incoming);
 
             MinecraftClient client = context.client();
             if (client.inGameHud != null) {
@@ -27,12 +31,6 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
     }
 
     public static boolean shouldReplaceDeathMessage(int victimEntityId) {
-        FabricNetwork.GlitchPayload current = pendingDeath;
-        if (current == null || current.victimEntityId() != victimEntityId) {
-            return false;
-        }
-
-        pendingDeath = null;
-        return true;
+        return PENDING_DEATHS.remove(victimEntityId) != null;
     }
 }
