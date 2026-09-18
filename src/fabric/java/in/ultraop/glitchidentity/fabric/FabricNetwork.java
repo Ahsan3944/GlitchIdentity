@@ -1,46 +1,10 @@
 package in.ultraop.glitchidentity.fabric;
 
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-import net.minecraft.network.RegistryByteBuf;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.codec.PacketCodecs;
-import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.util.Identifier;
 
 public final class FabricNetwork {
-    public static final Identifier ID = Identifier.of("glitchidentity", "glitch");
-
-    public record GlitchPayload(
-        int victimEntityId,
-        String victim,
-        String killer,
-        boolean glitchVictim,
-        boolean glitchKiller
-    ) implements CustomPayload {
-        public static final CustomPayload.Id<GlitchPayload> ID =
-            new CustomPayload.Id<>(FabricNetwork.ID);
-
-        public static final PacketCodec<RegistryByteBuf, GlitchPayload> CODEC =
-            PacketCodec.tuple(
-                PacketCodecs.VAR_INT, GlitchPayload::victimEntityId,
-                PacketCodecs.STRING, GlitchPayload::victim,
-                PacketCodecs.STRING, GlitchPayload::killer,
-                PacketCodecs.BOOLEAN, GlitchPayload::glitchVictim,
-                PacketCodecs.BOOLEAN, GlitchPayload::glitchKiller,
-                GlitchPayload::new
-            );
-
-        @Override
-        public CustomPayload.Id<? extends CustomPayload> getId() {
-            return ID;
-        }
-    }
-
-    static {
-        PayloadTypeRegistry.playS2C().register(GlitchPayload.ID, GlitchPayload.CODEC);
-    }
+    private FabricNetwork() {}
 
     public static void sendGlitch(
         net.minecraft.server.world.ServerWorld world,
@@ -60,9 +24,8 @@ public final class FabricNetwork {
             glitchKiller
         );
 
-        // The client mod performs the actual packet interception and animation.
-        // Vanilla clients are deliberately left alone so they keep their normal
-        // death message instead of receiving a duplicate static fallback.
+        // Only clients with GlitchIdentity installed receive the custom payload.
+        // Vanilla clients continue to receive the normal Minecraft death message.
         for (ServerPlayerEntity player : world.getServer().getPlayerManager().getPlayerList()) {
             if (ServerPlayNetworking.canSend(player, GlitchPayload.ID)) {
                 ServerPlayNetworking.send(player, payload);
