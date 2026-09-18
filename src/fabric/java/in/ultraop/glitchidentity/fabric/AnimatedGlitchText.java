@@ -111,7 +111,7 @@ public final class AnimatedGlitchText implements Text {
                 for (int i = 0; i < codePoints.length; i++) {
                     if (!visitor.accept(
                         i,
-                        Style.EMPTY.withColor(current.colors()[i]),
+                        Style.EMPTY.withColor(current.colors()[i] & 0xFFFFFF),
                         codePoints[i]
                     )) {
                         return false;
