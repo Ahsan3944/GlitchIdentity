@@ -1,5 +1,6 @@
 package in.ultraop.glitchidentity.paper;
 
+import in.ultraop.glitchidentity.core.GlitchFrameGenerator;
 import in.ultraop.glitchidentity.core.GlitchMessages;
 import in.ultraop.glitchidentity.core.GlitchStore;
 import net.kyori.adventure.text.Component;
@@ -43,51 +44,43 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
             return;
         }
 
-        var f = in.ultraop.glitchidentity.core.GlitchFrameGenerator.next();
-        Component glitch = Component.empty();
-        for (int i = 0; i < f.text().length(); i++) {
-            int cp = f.text().codePoints().skip(i).findFirst().orElse('?');
-            glitch = glitch.append(
-                Component.text(new String(Character.toChars(cp)))
-                    .color(TextColor.color(f.colors()[i]))
-            );
+        Component message = event.deathMessage();
+        if (message == null) {
+            return;
         }
-
-        Component message = Component.empty();
 
         if (glitchVictim) {
-            message = message.append(glitch);
-        } else {
-            message = message.append(Component.text(victim.getName()));
+            message = replaceLiteralWithGlitch(message, victim.getName());
         }
 
-        if (killer != null) {
-            message = message.append(Component.text(" was slain by "));
-
-            if (glitchKiller) {
-                var killerFrame = in.ultraop.glitchidentity.core.GlitchFrameGenerator.next();
-                Component killerGlitch = Component.empty();
-                for (int i = 0; i < killerFrame.text().length(); i++) {
-                    int cp = killerFrame.text().codePoints().skip(i).findFirst().orElse('?');
-                    killerGlitch = killerGlitch.append(
-                        Component.text(new String(Character.toChars(cp)))
-                            .color(TextColor.color(killerFrame.colors()[i]))
-                    );
-                }
-                message = message.append(killerGlitch);
-            } else {
-                message = message.append(Component.text(killer.getName()));
-            }
-        } else {
-            message = message.append(Component.text(" died"));
+        if (glitchKiller) {
+            message = replaceLiteralWithGlitch(message, killer.getName());
         }
 
         event.deathMessage(message);
     }
 
+    private Component replaceLiteralWithGlitch(Component message, String name) {
+        var frame = GlitchFrameGenerator.next();
+        int[] codePoints = frame.text().codePoints().toArray();
+
+        Component glitch = Component.empty();
+        for (int i = 0; i < codePoints.length; i++) {
+            glitch = glitch.append(
+                Component.text(new String(Character.toChars(codePoints[i])))
+                    .color(TextColor.color(frame.colors()[i] & 0xFFFFFF))
+            );
+        }
+
+        return message.replaceText(builder ->
+            builder.matchLiteral(name).replacement(glitch)
+        );
+    }
+
     @Override public boolean onCommand(CommandSender s, Command c, String l, String[] a) {
         if (!s.isOp()) { s.sendMessage("§cYou must be OP to use GlitchIdentity."); return true; }
         if (a.length == 0 || a[0].equalsIgnoreCase("help")) { s.sendMessage(GlitchMessages.HELP); return true; }
+
         switch (a[0].toLowerCase(Locale.ROOT)) {
             case "add" -> {
                 if (a.length < 2) { s.sendMessage("§cUsage: /glitch add <player>"); return true; }
@@ -137,7 +130,7 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
         if (dataFile == null) return;
         getDataFolder().mkdirs();
         try (var pw = new PrintWriter(new FileWriter(dataFile))) {
-            store.all().forEach(id -> pw.println(id));
+            store.all().forEach(pw::println);
         } catch (IOException e) {
             getLogger().warning("Could not save players.txt: " + e.getMessage());
         }
