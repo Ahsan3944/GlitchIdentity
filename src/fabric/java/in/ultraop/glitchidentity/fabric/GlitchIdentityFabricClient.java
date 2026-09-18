@@ -14,7 +14,7 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
-        ClientPlayNetworking.registerGlobalReceiver(FabricNetwork.GLITCH, (incoming, context) ->
+        ClientPlayNetworking.registerGlobalReceiver(FabricNetwork.GlitchPayload.ID, (incoming, context) ->
             context.client().execute(() -> {
                 payload = incoming;
                 until = System.currentTimeMillis() + 6000L;
