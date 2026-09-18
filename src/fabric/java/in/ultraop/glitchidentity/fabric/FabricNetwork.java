@@ -4,12 +4,13 @@ import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
+import net.minecraft.network.codec.PacketCodec;
+import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.util.Identifier;
 
 public final class FabricNetwork {
     public static final Identifier ID = Identifier.of("glitchidentity", "glitch");
-    public static final CustomPayload.Type<GlitchPayload> GLITCH = new CustomPayload.Type<>(ID);
 
     public record GlitchPayload(
         String victim,
@@ -17,8 +18,11 @@ public final class FabricNetwork {
         boolean glitchVictim,
         boolean glitchKiller
     ) implements CustomPayload {
-        public static final net.minecraft.network.codec.StreamCodec<net.minecraft.network.RegistryByteBuf, GlitchPayload> STREAM_CODEC =
-            net.minecraft.network.codec.StreamCodec.composite(
+        public static final CustomPayload.Id<GlitchPayload> ID =
+            new CustomPayload.Id<>(FabricNetwork.ID);
+
+        public static final PacketCodec<RegistryByteBuf, GlitchPayload> CODEC =
+            PacketCodec.tuple(
                 PacketCodecs.STRING, GlitchPayload::victim,
                 PacketCodecs.STRING, GlitchPayload::killer,
                 PacketCodecs.BOOL, GlitchPayload::glitchVictim,
@@ -27,13 +31,13 @@ public final class FabricNetwork {
             );
 
         @Override
-        public CustomPayload.Type<? extends CustomPayload> getType() {
-            return GLITCH;
+        public CustomPayload.Id<? extends CustomPayload> getId() {
+            return ID;
         }
     }
 
     static {
-        PayloadTypeRegistry.playS2C().register(GLITCH, GlitchPayload.STREAM_CODEC);
+        PayloadTypeRegistry.playS2C().register(GlitchPayload.ID, GlitchPayload.CODEC);
     }
 
     public static void sendGlitch(
@@ -54,7 +58,7 @@ public final class FabricNetwork {
         );
 
         for (ServerPlayerEntity player : world.getServer().getPlayerManager().getPlayerList()) {
-            if (ServerPlayNetworking.canSend(player, GLITCH)) {
+            if (ServerPlayNetworking.canSend(player, GlitchPayload.ID)) {
                 ServerPlayNetworking.send(player, payload);
             }
         }
