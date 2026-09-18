@@ -18,19 +18,27 @@ import java.io.*;
 import java.util.*;
 
 public final class GlitchIdentityPaper extends JavaPlugin implements Listener, CommandExecutor, TabCompleter {
+    private static final String ADMIN_PERMISSION = "glitchidentity.admin";
+
     private final GlitchStore store = new GlitchStore();
     private File dataFile;
 
-    @Override public void onEnable() {
+    @Override
+    public void onEnable() {
         dataFile = new File(getDataFolder(), "players.txt");
         loadStore();
+
         getServer().getPluginManager().registerEvents(this, this);
         Objects.requireNonNull(getCommand("glitch")).setExecutor(this);
         Objects.requireNonNull(getCommand("glitch")).setTabCompleter(this);
+
         getLogger().info("GlitchIdentity enabled. Paper fallback uses a static corrupted identity for vanilla clients.");
     }
 
-    @Override public void onDisable() { saveStore(); }
+    @Override
+    public void onDisable() {
+        saveStore();
+    }
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
@@ -72,65 +80,136 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
             );
         }
 
+        final Component replacement = glitch;
         return message.replaceText(builder ->
-            builder.matchLiteral(name).replacement(glitch)
+            builder.matchLiteral(name).replacement(replacement)
         );
     }
 
-    @Override public boolean onCommand(CommandSender s, Command c, String l, String[] a) {
-        if (!s.isOp()) { s.sendMessage("§cYou must be OP to use GlitchIdentity."); return true; }
-        if (a.length == 0 || a[0].equalsIgnoreCase("help")) { s.sendMessage(GlitchMessages.HELP); return true; }
+    @Override
+    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if (!sender.hasPermission(ADMIN_PERMISSION)) {
+            sender.sendMessage("§cYou must be OP to use GlitchIdentity.");
+            return true;
+        }
 
-        switch (a[0].toLowerCase(Locale.ROOT)) {
+        if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
+            sender.sendMessage(GlitchMessages.HELP);
+            return true;
+        }
+
+        switch (args[0].toLowerCase(Locale.ROOT)) {
             case "add" -> {
-                if (a.length < 2) { s.sendMessage("§cUsage: /glitch add <player>"); return true; }
-                Player p = Bukkit.getPlayerExact(a[1]);
-                OfflinePlayer op = p != null ? p : Bukkit.getOfflinePlayer(a[1]);
-                if (store.add(op.getUniqueId())) { saveStore(); s.sendMessage("§aGlitch enabled for " + a[1]); }
-                else s.sendMessage("§eAlready enabled.");
+                if (args.length < 2) {
+                    sender.sendMessage("§cUsage: /glitch add <player>");
+                    return true;
+                }
+
+                Player player = Bukkit.getPlayerExact(args[1]);
+                OfflinePlayer offlinePlayer = player != null
+                    ? player
+                    : Bukkit.getOfflinePlayer(args[1]);
+
+                if (store.add(offlinePlayer.getUniqueId())) {
+                    saveStore();
+                    sender.sendMessage("§aGlitch enabled for " + args[1]);
+                } else {
+                    sender.sendMessage("§eAlready enabled.");
+                }
             }
             case "remove" -> {
-                if (a.length < 2) { s.sendMessage("§cUsage: /glitch remove <player>"); return true; }
-                OfflinePlayer op = Bukkit.getOfflinePlayer(a[1]);
-                if (store.remove(op.getUniqueId())) { saveStore(); s.sendMessage("§aGlitch removed for " + a[1]); }
-                else s.sendMessage("§ePlayer is not configured.");
+                if (args.length < 2) {
+                    sender.sendMessage("§cUsage: /glitch remove <player>");
+                    return true;
+                }
+
+                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(args[1]);
+                if (store.remove(offlinePlayer.getUniqueId())) {
+                    saveStore();
+                    sender.sendMessage("§aGlitch removed for " + args[1]);
+                } else {
+                    sender.sendMessage("§ePlayer is not configured.");
+                }
             }
             case "list" -> {
-                if (store.all().isEmpty()) { s.sendMessage("§7No glitch players configured."); return true; }
-                s.sendMessage("§dGlitch players:");
-                store.all().forEach(id -> {
-                    OfflinePlayer p = Bukkit.getOfflinePlayer(id);
-                    s.sendMessage("§7- §f" + (p.getName() == null ? id : p.getName()));
-                });
+                if (store.all().isEmpty()) {
+                    sender.sendMessage("§7No glitch players configured.");
+                    return true;
+                }
+
+                sender.sendMessage("§dGlitch players:");
+                store.all().stream()
+                    .sorted(Comparator.comparing(UUID::toString))
+                    .forEach(id -> {
+                        OfflinePlayer player = Bukkit.getOfflinePlayer(id);
+                        sender.sendMessage("§7- §f" + (player.getName() == null ? id : player.getName()));
+                    });
             }
-            case "reload" -> { loadStore(); s.sendMessage("§aGlitchIdentity reloaded."); }
-            default -> s.sendMessage(GlitchMessages.HELP);
+            case "reload" -> {
+                loadStore();
+                sender.sendMessage("§aGlitchIdentity reloaded.");
+            }
+            default -> sender.sendMessage(GlitchMessages.HELP);
         }
+
         return true;
     }
 
-    @Override public List<String> onTabComplete(CommandSender s, Command c, String l, String[] a) {
-        if (a.length == 1) return List.of("add","remove","list","reload","help").stream().filter(x -> x.startsWith(a[0].toLowerCase())).toList();
-        if (a.length == 2 && (a[0].equalsIgnoreCase("add") || a[0].equalsIgnoreCase("remove")))
-            return Bukkit.getOnlinePlayers().stream().map(Player::getName).filter(x -> x.toLowerCase().startsWith(a[1].toLowerCase())).toList();
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
+        if (args.length == 1) {
+            String prefix = args[0].toLowerCase(Locale.ROOT);
+            return List.of("add", "remove", "list", "reload", "help").stream()
+                .filter(value -> value.startsWith(prefix))
+                .toList();
+        }
+
+        if (args.length == 2 &&
+            (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("remove"))) {
+            String prefix = args[1].toLowerCase(Locale.ROOT);
+            return Bukkit.getOnlinePlayers().stream()
+                .map(Player::getName)
+                .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(prefix))
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .toList();
+        }
+
         return List.of();
     }
 
     private void loadStore() {
         store.clear();
-        if (!dataFile.exists()) return;
-        try (var br = new BufferedReader(new FileReader(dataFile))) {
-            br.lines().map(String::trim).filter(x -> !x.isEmpty()).forEach(x -> {
-                try { store.add(UUID.fromString(x)); } catch (IllegalArgumentException ignored) {}
-            });
-        } catch (IOException e) { getLogger().warning("Could not read players.txt: " + e.getMessage()); }
+        if (!dataFile.exists()) {
+            return;
+        }
+
+        try (var reader = new BufferedReader(new FileReader(dataFile))) {
+            reader.lines()
+                .map(String::trim)
+                .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                .forEach(line -> {
+                    try {
+                        store.add(UUID.fromString(line));
+                    } catch (IllegalArgumentException ignored) {
+                        getLogger().warning("Ignoring malformed UUID in players.txt: " + line);
+                    }
+                });
+        } catch (IOException e) {
+            getLogger().warning("Could not read players.txt: " + e.getMessage());
+        }
     }
 
     private void saveStore() {
-        if (dataFile == null) return;
+        if (dataFile == null) {
+            return;
+        }
+
         getDataFolder().mkdirs();
-        try (var pw = new PrintWriter(new FileWriter(dataFile))) {
-            store.all().forEach(pw::println);
+
+        try (var writer = new PrintWriter(new FileWriter(dataFile))) {
+            store.all().stream()
+                .sorted(Comparator.comparing(UUID::toString))
+                .forEach(writer::println);
         } catch (IOException e) {
             getLogger().warning("Could not save players.txt: " + e.getMessage());
         }
