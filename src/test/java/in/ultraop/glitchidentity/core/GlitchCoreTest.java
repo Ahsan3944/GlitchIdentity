@@ -2,6 +2,8 @@ package in.ultraop.glitchidentity.core;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -15,6 +17,9 @@ class GlitchCoreTest {
 
             assertTrue(codePoints.length >= 5 && codePoints.length <= 7);
             assertEquals(codePoints.length, frame.colors().length);
+            for (int color : frame.colors()) {
+                assertEquals(0xFF, (color >>> 24) & 0xFF);
+            }
         }
     }
 
@@ -41,6 +46,15 @@ class GlitchCoreTest {
         sample.codePoints().forEach(cp ->
             assertTrue(allowed.indexOf(cp) >= 0, "Unexpected code point: " + cp)
         );
+    }
+
+    @Test
+    void generatedFramesUsuallyChange() {
+        Set<String> frames = new HashSet<>();
+        for (int i = 0; i < 100; i++) {
+            frames.add(GlitchFrameGenerator.next().text());
+        }
+        assertTrue(frames.size() >= 90, "Too many duplicate frames generated");
     }
 
     @Test
