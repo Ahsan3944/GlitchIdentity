@@ -8,6 +8,7 @@ import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.MutableText;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
@@ -84,10 +85,10 @@ public final class FabricNetwork {
             ? GlitchFrameGenerator.next()
             : null;
 
-        Text message = Text.empty();
+        MutableText message = Text.empty();
 
         if (glitchVictim) {
-            message = message.copy().append(Text.literal(victimFrame.text()));
+            message = message.append(Text.literal(victimFrame.text()));
         } else {
             message = message.copy().append(Text.literal(victim.getName().getString()));
         }
