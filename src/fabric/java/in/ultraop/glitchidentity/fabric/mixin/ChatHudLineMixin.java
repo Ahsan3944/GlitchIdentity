@@ -1,55 +1,28 @@
 package in.ultraop.glitchidentity.fabric.mixin;
 
 import in.ultraop.glitchidentity.fabric.AnimatedGlitchText;
-import in.ultraop.glitchidentity.fabric.GlitchIdentityFabricClient;
-import net.minecraft.client.gui.hud.ChatHud;
-import net.minecraft.client.gui.hud.MessageIndicator;
-import net.minecraft.network.message.MessageSignatureData;
-import net.minecraft.text.Text;
+import net.minecraft.client.font.TextRenderer;
+import net.minecraft.client.gui.hud.ChatHudLine;
+import net.minecraft.text.OrderedText;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-@Mixin(ChatHud.class)
+import java.util.List;
+
+@Mixin(ChatHudLine.class)
 public abstract class ChatHudLineMixin {
-    @Inject(
-        method = "addMessage(Lnet/minecraft/text/Text;)V",
-        at = @At("HEAD"),
-        cancellable = true
-    )
-    private void glitchidentity$replaceSimpleDeathMessage(
-        Text message,
-        CallbackInfo ci
+    @Inject(method = "breakLines", at = @At("HEAD"), cancellable = true)
+    private void glitchidentity$keepAnimatedText(
+        TextRenderer textRenderer,
+        int width,
+        CallbackInfoReturnable<List<OrderedText>> cir
     ) {
-        replace(message, ci);
-    }
+        ChatHudLine line = (ChatHudLine) (Object) this;
 
-    @Inject(
-        method = "addMessage(Lnet/minecraft/text/Text;Lnet/minecraft/network/message/MessageSignatureData;Lnet/minecraft/client/gui/hud/MessageIndicator;)V",
-        at = @At("HEAD"),
-        cancellable = true
-    )
-    private void glitchidentity$replaceSignedDeathMessage(
-        Text message,
-        MessageSignatureData signatureData,
-        MessageIndicator indicator,
-        CallbackInfo ci
-    ) {
-        replace(message, ci);
-    }
-
-    private void replace(Text message, CallbackInfo ci) {
-        if (message instanceof AnimatedGlitchText) {
-            return;
+        if (line.content() instanceof AnimatedGlitchText animated) {
+            cir.setReturnValue(List.of(animated.asOrderedText()));
         }
-
-        Text replacement = GlitchIdentityFabricClient.consumeDeathMessage(message);
-        if (replacement == null) {
-            return;
-        }
-
-        ci.cancel();
-        ((ChatHud) (Object) this).addMessage(replacement);
     }
 }
