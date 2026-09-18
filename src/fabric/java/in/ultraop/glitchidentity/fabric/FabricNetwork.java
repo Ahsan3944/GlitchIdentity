@@ -1,43 +1,68 @@
 package in.ultraop.glitchidentity.fabric;
 
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.entity.Entity;
+import net.minecraft.entity.Ownable;
+import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.server.world.ServerWorld;
+import net.minecraft.text.Text;
 
 public final class FabricNetwork {
     private FabricNetwork() {}
 
     public static void sendGlitch(
-        net.minecraft.server.world.ServerWorld world,
+        ServerWorld world,
         ServerPlayerEntity victim,
         ServerPlayerEntity killer,
+        DamageSource damageSource,
         boolean glitchVictim,
         boolean glitchKiller
     ) {
-        String safeVictim = glitchVictim ? "" : victim.getName().getString();
-        String safeKiller = killer == null || glitchKiller ? "" : killer.getName().getString();
+        Text deathMessage = damageSource.getDeathMessage(victim);
+
+        String victimName = glitchVictim ? victim.getDisplayName().getString() : "\u0000never-victim\u0000";
+        String killerName = glitchKiller && killer != null
+            ? killer.getDisplayName().getString()
+            : "\u0000never-killer\u0000";
+
+        Text safeMessage = GlitchTextSanitizer.sanitize(
+            deathMessage,
+            victimName,
+            killerName
+        );
 
         GlitchPayload payload = new GlitchPayload(
-            victim.getId(),
-            safeVictim,
-            safeKiller,
+            safeMessage,
             glitchVictim,
             glitchKiller
         );
 
         for (ServerPlayerEntity player : world.getServer().getPlayerManager().getPlayerList()) {
-            boolean supported = ServerPlayNetworking.canSend(player, GlitchPayload.ID);
-
-            System.out.println(
-                "[GlitchIdentity] Death payload -> " +
-                player.getName().getString() +
-                " | clientSupport=" + supported +
-                " | victimGlitch=" + glitchVictim +
-                " | killerGlitch=" + glitchKiller
-            );
-
-            if (supported) {
+            if (ServerPlayNetworking.canSend(player, GlitchPayload.ID)) {
                 ServerPlayNetworking.send(player, payload);
             }
         }
+    }
+
+    public static ServerPlayerEntity resolvePlayerAttacker(DamageSource damageSource) {
+        Entity attacker = damageSource.getAttacker();
+        if (attacker instanceof ServerPlayerEntity player) {
+            return player;
+        }
+
+        Entity source = damageSource.getSource();
+        if (source instanceof ServerPlayerEntity player) {
+            return player;
+        }
+
+        if (source instanceof Ownable ownable) {
+            Entity owner = ownable.getOwner();
+            if (owner instanceof ServerPlayerEntity player) {
+                return player;
+            }
+        }
+
+        return null;
     }
 }
