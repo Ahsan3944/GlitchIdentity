@@ -10,7 +10,6 @@
     "server": ["in.ultraop.glitchidentity.fabric.GlitchIdentityFabric"],
     "client": ["in.ultraop.glitchidentity.fabric.GlitchIdentityFabricClient"]
   },
-  "mixins": ["glitchidentity.mixins.json"],
   "depends": {
     "fabricloader": ">=0.19.3",
     "minecraft": "~1.21.11",
