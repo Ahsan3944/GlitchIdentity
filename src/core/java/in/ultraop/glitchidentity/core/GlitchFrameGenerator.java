@@ -3,32 +3,84 @@ package in.ultraop.glitchidentity.core;
 import java.util.concurrent.ThreadLocalRandom;
 
 public final class GlitchFrameGenerator {
-    // Hacker/corrupted identity palette: deliberately avoids a plain, uniform look.
-    private static final char[] POOL =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#@$%&*+=?!_<>[]{}\\/|".toCharArray();
+    /*
+     * Deliberately mixed Unicode/ASCII glitch pool.
+     * Minecraft clients do not render every Unicode glyph in every font, so this
+     * pool focuses on BMP characters commonly available to Java/Minecraft fonts.
+     */
+    private static final int[] POOL = (
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ" +
+        "abcdefghijklmnopqrstuvwxyz" +
+        "0123456789" +
+        "#@$%&*+=?!_<>[]{}\\/|~^" +
+        "¢£¤¥₠₡₢₣₤₥₦₧₨₩₪₫€₭₮₯₰₱₲₳₴₵₸₹₺₼₽₾₿" +
+        "ÆæŒœØøÐðÞþŁłĐđŦŧƵƶƔɎʤʣʕʘ" +
+        "ΔδΘθΛλΞξΠπΣσΦφΨψΩω" +
+        "αβγδεζηικμνξοπρστφχψω" +
+        "←↑→↓↔↕↖↗↘↙⇐⇒⇔⇑⇓⇕⇖⇗⇘⇙⇞⇟" +
+        "∂∇√∞∑∏∫∮∴∵≈≠≤≥±×÷∩∪∧∨⊕⊗⊙⊥" +
+        "⩓⩠⪔⪕⪖⪗⪙⪚⪛⪜⪝" +
+        "ⅧⅨⅩⅪⅫ" +
+        "ↂↈ∳∲" +
+        "§¶†‡•°※⁂" +
+        "★☆✦✧✶✪❖✸✻" +
+        "◆◇◈●○■□▲△▼▽" +
+        "─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬" +
+        "▀▄█░▒▓"
+    ).codePoints().toArray();
 
     private static final int[] COLORS = {
         0xFF1744, 0xFFEA00, 0x00E5FF, 0xD500F9,
         0x76FF03, 0xFF6D00, 0x651FFF, 0xFFFFFF
     };
 
+    private static String lastFrame = "";
+
     private GlitchFrameGenerator() {}
 
     /**
-     * Every frame gets a fresh random length from 5 through 7.
-     * Each slot independently gets a fresh character and color.
+     * Creates a fresh 5-7 character identity every frame.
+     * Characters and colors are independently randomized.
+     * Consecutive identical frames are rejected to prevent visible repetition.
      */
-    public static Frame next() {
+    public static synchronized Frame next() {
         var random = ThreadLocalRandom.current();
-        int length = 5 + random.nextInt(3); // 5, 6, or 7
+
+        for (int attempt = 0; attempt < 12; attempt++) {
+            int length = 5 + random.nextInt(3);
+            StringBuilder text = new StringBuilder(length);
+            int[] colors = new int[length];
+
+            int previousCodePoint = -1;
+            for (int i = 0; i < length; i++) {
+                int codePoint;
+                do {
+                    codePoint = POOL[random.nextInt(POOL.length)];
+                } while (codePoint == previousCodePoint && POOL.length > 1);
+
+                previousCodePoint = codePoint;
+                text.appendCodePoint(codePoint);
+                colors[i] = COLORS[random.nextInt(COLORS.length)];
+            }
+
+            String value = text.toString();
+            if (!value.equals(lastFrame)) {
+                lastFrame = value;
+                return new Frame(value, colors);
+            }
+        }
+
+        // The pool is large enough that this is only a defensive fallback.
+        int length = 5 + random.nextInt(3);
         StringBuilder text = new StringBuilder(length);
         int[] colors = new int[length];
-
         for (int i = 0; i < length; i++) {
-            text.append(POOL[random.nextInt(POOL.length)]);
+            int codePoint = POOL[random.nextInt(POOL.length)];
+            text.appendCodePoint(codePoint);
             colors[i] = COLORS[random.nextInt(COLORS.length)];
         }
-        return new Frame(text.toString(), colors);
+        lastFrame = text.toString();
+        return new Frame(lastFrame, colors);
     }
 
     public record Frame(String text, int[] colors) {}
