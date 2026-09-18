@@ -27,6 +27,7 @@ public final class GlitchIdentityFabric implements ModInitializer {
                 .then(CommandManager.literal("reload").executes(ctx -> { ctx.getSource().sendFeedback(() -> net.minecraft.text.Text.literal("§aGlitchIdentity reloaded."), false); return 1; }))
                 .then(CommandManager.literal("help").executes(ctx -> { ctx.getSource().sendFeedback(() -> net.minecraft.text.Text.literal(GlitchMessages.HELP), false); return 1; }))
             )
+        )
         );
         ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((world, killer, killed) -> {
             if (!(killer instanceof ServerPlayerEntity player) || !(killed instanceof ServerPlayerEntity victim)) return;
