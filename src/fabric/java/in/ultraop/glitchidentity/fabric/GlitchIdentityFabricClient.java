@@ -26,7 +26,7 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
             if (mc.textRenderer == null) return;
             int y = mc.getWindow().getScaledHeight() - 40;
             draw.drawTextWithShadow(mc.textRenderer, Text.literal(victim + " was slain by "), 4, y, 0xFFFFFF);
-            String chars = randomCode(6);
+            String chars = randomCode();
             int x = 4 + mc.textRenderer.getWidth(victim + " was slain by ");
             for (int i=0;i<chars.length();i++) {
                 int[] colors={0x55FFFF,0xFF55FF,0xFFFF55,0x55FF55,0xFF5555,0x5555FF,0xFFFFFF};
@@ -35,8 +35,8 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
             }
         });
     }
-    private static String randomCode(int n) {
-        String pool="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789#@$%&*+=?!_";
+    private static String randomCode() {
+        String pool="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#@$%&*+=?!_<>[]{}\\/|";
         var r=new java.util.Random(System.nanoTime());
         StringBuilder s=new StringBuilder(n);
         for(int i=0;i<n;i++) s.append(pool.charAt(r.nextInt(pool.length())));
