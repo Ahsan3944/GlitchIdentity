@@ -4,7 +4,7 @@
   "compatibilityLevel": "JAVA_21",
   "refmap": "glitchidentity.refmap.json",
   "client": [
-    "ClientPlayNetworkHandlerMixin"
+    "ChatHudMixin"
   ],
   "injectors": {
     "defaultRequire": 1
