@@ -47,6 +47,10 @@ processResources {
     }
 }
 
+tasks.named('remapJar') {
+    archiveClassifier = 'universal'
+}
+
 jar {
     archiveClassifier = 'universal'
 }
