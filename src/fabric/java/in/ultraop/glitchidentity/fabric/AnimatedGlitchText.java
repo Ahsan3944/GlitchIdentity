@@ -82,7 +82,10 @@ public final class AnimatedGlitchText implements Text {
             ? killerGlitch.asOrderedText()
             : Text.literal(killer).asOrderedText();
 
-        return OrderedText.concat(victimText, separator, killerText);
+        return OrderedText.concat(
+            OrderedText.concat(victimText, separator),
+            killerText
+        );
     }
 
     private static final class GlitchSegment {
