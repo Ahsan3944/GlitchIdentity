@@ -25,13 +25,6 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
 
-loom {
-    mixin {
-        useLegacyMixinAp = true
-        defaultRefmapName = "glitchidentity.refmap.json"
-    }
-}
-
 sourceSets {
     main {
         java.srcDirs = ['src/core/java', 'src/fabric/java', 'src/paper/java']
@@ -49,7 +42,7 @@ tasks.named('test') {
 
 processResources {
     inputs.property 'version', project.version
-    filesMatching(['fabric.mod.json', 'glitchidentity.mixins.json', 'plugin.yml']) {
+    filesMatching(['fabric.mod.json', 'plugin.yml']) {
         expand(version: project.version)
     }
 }
