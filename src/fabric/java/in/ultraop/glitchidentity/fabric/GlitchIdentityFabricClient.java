@@ -5,6 +5,7 @@ import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.DrawContext;
 import net.minecraft.text.Text;
 
 public final class GlitchIdentityFabricClient implements ClientModInitializer {
@@ -64,14 +65,12 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
         });
     }
 
-    private static int drawGlitch(HudRenderCallback.HudRenderContext draw, MinecraftClient mc, int x, int y) {
+    private static int drawGlitch(DrawContext draw, MinecraftClient mc, int x, int y) {
         GlitchFrameGenerator.Frame frame = GlitchFrameGenerator.next();
+        int[] codePoints = frame.text().codePoints().toArray();
 
-        for (int i = 0; i < frame.text().length(); i++) {
-            String character = String.valueOf(frame.text().codePoints()
-                .skip(i)
-                .findFirst()
-                .orElse('?'));
+        for (int i = 0; i < codePoints.length; i++) {
+            String character = new String(Character.toChars(codePoints[i]));
             draw.drawTextWithShadow(
                 mc.textRenderer,
                 Text.literal(character),
