@@ -27,9 +27,7 @@ public final class GlitchIdentityFabric implements DedicatedServerModInitializer
                             .executes(ctx -> {
                                 var player = EntityArgumentType.getPlayer(ctx, "player");
                                 boolean added = STORE.add(player.getUuid());
-                                if (added) {
-                                    FabricConfig.save(STORE);
-                                }
+                                if (added) FabricConfig.save(STORE);
                                 ctx.getSource().sendFeedback(
                                     () -> Text.literal(added ? "§aGlitch enabled." : "§eAlready enabled."),
                                     false
@@ -43,9 +41,7 @@ public final class GlitchIdentityFabric implements DedicatedServerModInitializer
                             .executes(ctx -> {
                                 var player = EntityArgumentType.getPlayer(ctx, "player");
                                 boolean removed = STORE.remove(player.getUuid());
-                                if (removed) {
-                                    FabricConfig.save(STORE);
-                                }
+                                if (removed) FabricConfig.save(STORE);
                                 ctx.getSource().sendFeedback(
                                     () -> Text.literal(removed ? "§aGlitch removed." : "§ePlayer is not configured."),
                                     false
@@ -60,9 +56,7 @@ public final class GlitchIdentityFabric implements DedicatedServerModInitializer
                             var lines = STORE.all().stream()
                                 .map(id -> {
                                     ServerPlayerEntity online = server.getPlayerManager().getPlayer(id);
-                                    return online != null
-                                        ? online.getName().getString()
-                                        : id.toString();
+                                    return online != null ? online.getName().getString() : id.toString();
                                 })
                                 .sorted()
                                 .toList();
@@ -114,8 +108,7 @@ public final class GlitchIdentityFabric implements DedicatedServerModInitializer
                 return true;
             }
 
-            var attacker = damageSource.getAttacker();
-            ServerPlayerEntity killer = attacker instanceof ServerPlayerEntity p ? p : null;
+            ServerPlayerEntity killer = FabricNetwork.resolvePlayerAttacker(damageSource);
 
             boolean glitchVictim = STORE.contains(victim.getUuid());
             boolean glitchKiller = killer != null && STORE.contains(killer.getUuid());
@@ -125,6 +118,7 @@ public final class GlitchIdentityFabric implements DedicatedServerModInitializer
                     victim.getEntityWorld(),
                     victim,
                     killer,
+                    damageSource,
                     glitchVictim,
                     glitchKiller
                 );
