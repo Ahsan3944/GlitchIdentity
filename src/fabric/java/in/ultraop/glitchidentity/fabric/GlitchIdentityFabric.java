@@ -31,7 +31,7 @@ public final class GlitchIdentityFabric implements ModInitializer {
         ServerEntityCombatEvents.AFTER_KILLED_OTHER_ENTITY.register((world, killer, killed) -> {
             if (!(killer instanceof ServerPlayerEntity player) || !(killed instanceof ServerPlayerEntity victim)) return;
             if (!STORE.contains(player.getUuid())) return;
-            FabricNetwork.sendGlitch(world, victim, player.getName().getString());
+            FabricNetwork.sendGlitch(world, victim);
         });
     }
 }
