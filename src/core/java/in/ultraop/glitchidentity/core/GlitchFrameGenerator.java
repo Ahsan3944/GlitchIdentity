@@ -30,8 +30,8 @@ public final class GlitchFrameGenerator {
     ).codePoints().toArray();
 
     private static final int[] COLORS = {
-        0xFF1744, 0xFFEA00, 0x00E5FF, 0xD500F9,
-        0x76FF03, 0xFF6D00, 0x651FFF, 0xFFFFFF
+        0xFFFF1744, 0xFFFFEA00, 0xFF00E5FF, 0xFFD500F9,
+        0xFF76FF03, 0xFFFF6D00, 0xFF651FFF, 0xFFFFFFFF
     };
 
     private static String lastFrame = "";
