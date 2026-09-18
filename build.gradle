@@ -2,29 +2,50 @@ plugins {
     id 'fabric-loom' version '1.17.13'
     id 'java-library'
 }
+
 version = project.mod_version
 group = project.maven_group
+
 base { archivesName = 'GlitchIdentity' }
+
 repositories {
     maven { url = 'https://repo.papermc.io/repository/maven-public/' }
     mavenCentral()
 }
+
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
     compileOnly "io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT"
+
+    testImplementation platform('org.junit:junit-bom:5.13.4')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
 }
+
 sourceSets {
     main {
         java.srcDirs = ['src/core/java', 'src/fabric/java', 'src/paper/java']
         resources.srcDirs = ['src/fabric/resources', 'src/paper/resources']
     }
 }
-tasks.withType(JavaCompile).configureEach { options.release = 21 }
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
 processResources {
     inputs.property 'version', project.version
-    filesMatching(['fabric.mod.json','glitchidentity.mixins.json','plugin.yml']) { expand(version: project.version) }
+    filesMatching(['fabric.mod.json', 'glitchidentity.mixins.json', 'plugin.yml']) {
+        expand(version: project.version)
+    }
 }
-jar { archiveClassifier = 'universal' }
+
+jar {
+    archiveClassifier = 'universal'
+}
