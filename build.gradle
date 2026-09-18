@@ -1,0 +1,66 @@
+plugins {
+    id 'fabric-loom' version '1.17.13'
+    id 'java-library'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base { archivesName = 'GlitchIdentity' }
+
+repositories {
+    maven { url = 'https://repo.papermc.io/repository/maven-public/' }
+    mavenCentral()
+}
+
+loom { splitEnvironmentSourceSets() }
+
+sourceSets {
+    main { java.srcDir 'src/core/java' }
+    fabric { java.srcDir 'src/fabric/java'; resources.srcDir 'src/fabric/resources' }
+    paper { java.srcDir 'src/paper/java'; resources.srcDir 'src/paper/resources' }
+}
+
+configurations {
+    fabricImplementation.extendsFrom(mainImplementation)
+    paperImplementation.extendsFrom(mainImplementation)
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+    paperCompileOnly "io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT"
+}
+
+tasks.withType(JavaCompile).configureEach { options.release = 21 }
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching(['fabric.mod.json','glitchidentity.mixins.json']) { expand(version: project.version) }
+}
+
+jar { archiveClassifier = 'core' }
+
+task paperJar(type: Jar) {
+    archiveClassifier = 'paper'
+    from sourceSets.main.output, sourceSets.paper.output
+    dependsOn classes
+}
+
+task fabricJar(type: net.fabricmc.loom.task.RemapJarTask) {
+    dependsOn remapJar
+    archiveClassifier = 'fabric'
+    inputFile = remapJar.archiveFile
+}
+
+task universalJar(type: Jar) {
+    archiveClassifier = 'universal'
+    dependsOn remapJar, paperClasses
+    from sourceSets.main.output, sourceSets.paper.output
+    from zipTree(remapJar.archiveFile)
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+build.dependsOn paperJar, fabricJar, universalJar
