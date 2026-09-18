@@ -13,13 +13,16 @@ import net.minecraft.text.Text;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public final class GlitchIdentityFabric implements ModInitializer {
     public static final String MOD_ID = "glitchidentity";
     public static final GlitchStore STORE = new GlitchStore();
 
-    private static final Map<String, Long> SUPPRESS_DEATH_MESSAGES = new ConcurrentHashMap<>();
+    private static final ConcurrentLinkedQueue<PendingSuppression> SUPPRESS_DEATH_MESSAGES =
+        new ConcurrentLinkedQueue<>();
+
+    private record PendingSuppression(String message, long expiresAt) {}
 
     @Override
     public void onInitialize() {
@@ -132,9 +135,11 @@ public final class GlitchIdentityFabric implements ModInitializer {
             }
 
             Text vanillaDeathMessage = victim.getDamageTracker().getDeathMessage();
-            SUPPRESS_DEATH_MESSAGES.put(
-                vanillaDeathMessage.getString(),
-                System.currentTimeMillis() + 3000L
+            SUPPRESS_DEATH_MESSAGES.add(
+                new PendingSuppression(
+                    vanillaDeathMessage.getString(),
+                    System.currentTimeMillis() + 3000L
+                )
             );
 
             FabricNetwork.sendGlitch(
@@ -152,12 +157,13 @@ public final class GlitchIdentityFabric implements ModInitializer {
             }
 
             long now = System.currentTimeMillis();
-            SUPPRESS_DEATH_MESSAGES.entrySet().removeIf(e -> e.getValue() < now);
+            SUPPRESS_DEATH_MESSAGES.removeIf(entry -> entry.expiresAt() < now);
 
-            Long expiry = SUPPRESS_DEATH_MESSAGES.get(message.getString());
-            if (expiry != null) {
-                SUPPRESS_DEATH_MESSAGES.remove(message.getString());
-                return false;
+            for (PendingSuppression entry : SUPPRESS_DEATH_MESSAGES) {
+                if (entry.message().equals(message.getString()) && entry.expiresAt() >= now) {
+                    SUPPRESS_DEATH_MESSAGES.remove(entry);
+                    return false;
+                }
             }
 
             return true;
