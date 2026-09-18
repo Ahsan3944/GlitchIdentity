@@ -25,8 +25,8 @@ public final class FabricNetwork {
             PacketCodec.tuple(
                 PacketCodecs.STRING, GlitchPayload::victim,
                 PacketCodecs.STRING, GlitchPayload::killer,
-                PacketCodecs.BOOL, GlitchPayload::glitchVictim,
-                PacketCodecs.BOOL, GlitchPayload::glitchKiller,
+                PacketCodecs.BOOLEAN, GlitchPayload::glitchVictim,
+                PacketCodecs.BOOLEAN, GlitchPayload::glitchKiller,
                 GlitchPayload::new
             );
 
