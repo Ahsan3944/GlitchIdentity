@@ -88,7 +88,7 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.hasPermission(ADMIN_PERMISSION)) {
+        if (!sender.isOp()) {
             sender.sendMessage("§cYou must be OP to use GlitchIdentity.");
             return true;
         }
