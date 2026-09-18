@@ -36,7 +36,7 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
         if (killer == null || !store.contains(killer.getUniqueId())) return;
         // Paper can replace the death Component, but a vanilla client cannot mutate an already-rendered
         // chat line. Keep the real name hidden and use a colored static corruption as safe fallback.
-        var f = in.ultraop.glitchidentity.core.GlitchFrameGenerator.next(6);
+        var f = in.ultraop.glitchidentity.core.GlitchFrameGenerator.next();
         Component glitch = Component.empty();
         for (int i = 0; i < f.text().length(); i++) {
             glitch = glitch.append(Component.text(String.valueOf(f.text().charAt(i)))
