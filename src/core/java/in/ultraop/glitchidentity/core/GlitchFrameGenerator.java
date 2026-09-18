@@ -5,7 +5,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public final class GlitchFrameGenerator {
     // Hacker/corrupted identity palette: deliberately avoids a plain, uniform look.
     private static final char[] POOL =
-        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#@$%&*+=?!_<>[]{}\/|".toCharArray();
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789#@$%&*+=?!_<>[]{}\\/|".toCharArray();
 
     private static final int[] COLORS = {
         0xFF1744, 0xFFEA00, 0x00E5FF, 0xD500F9,
