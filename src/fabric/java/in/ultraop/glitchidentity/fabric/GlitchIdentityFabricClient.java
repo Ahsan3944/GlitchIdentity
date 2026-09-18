@@ -18,9 +18,8 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
             PENDING_DEATHS.addLast(incoming);
 
             System.out.println(
-                "[GlitchIdentity] Received glitch payload: victimId=" +
-                incoming.victimEntityId() +
-                ", glitchVictim=" + incoming.glitchVictim() +
+                "[GlitchIdentity] Received glitch payload: " +
+                "glitchVictim=" + incoming.glitchVictim() +
                 ", glitchKiller=" + incoming.glitchKiller()
             );
         });
@@ -28,38 +27,37 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
 
     public static Text consumeDeathMessage(Text original) {
         String plain = original.getString();
-        if (!looksLikeDeathMessage(plain)) {
-            return null;
-        }
 
-        GlitchPayload payload = PENDING_DEATHS.pollFirst();
-        if (payload == null) {
+        for (GlitchPayload payload : PENDING_DEATHS) {
+            String expected = stripMarkers(payload.message().getString());
+
+            if (!expected.equals(plain)) {
+                continue;
+            }
+
+            PENDING_DEATHS.remove(payload);
+
+            if (!payload.glitchVictim() && !payload.glitchKiller()) {
+                return null;
+            }
+
             System.out.println(
-                "[GlitchIdentity] Death chat reached ChatHud without a pending glitch payload: " +
-                plain
+                "[GlitchIdentity] Replacing ChatHud death message: " + plain
             );
-            return null;
+
+            return AnimatedGlitchText.death(
+                payload.message(),
+                payload.glitchVictim(),
+                payload.glitchKiller()
+            );
         }
 
-        if (!payload.glitchVictim() && !payload.glitchKiller()) {
-            return null;
-        }
-
-        System.out.println(
-            "[GlitchIdentity] Replacing ChatHud death message: " + plain
-        );
-
-        return AnimatedGlitchText.death(
-            payload.glitchVictim() ? "" : payload.victim(),
-            payload.glitchKiller() ? "" : payload.killer(),
-            payload.glitchVictim(),
-            payload.glitchKiller()
-        );
+        return null;
     }
 
-    private static boolean looksLikeDeathMessage(String message) {
-        return message.contains(" was slain by ")
-            || message.endsWith(" died")
-            || message.contains(" died ");
+    private static String stripMarkers(String value) {
+        return value
+            .replace(GlitchTextSanitizer.VICTIM_MARKER, "")
+            .replace(GlitchTextSanitizer.KILLER_MARKER, "");
     }
 }
