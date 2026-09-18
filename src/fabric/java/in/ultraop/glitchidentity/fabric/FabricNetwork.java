@@ -24,10 +24,18 @@ public final class FabricNetwork {
             glitchKiller
         );
 
-        // Only clients with GlitchIdentity installed receive the custom payload.
-        // Vanilla clients continue to receive the normal Minecraft death message.
         for (ServerPlayerEntity player : world.getServer().getPlayerManager().getPlayerList()) {
-            if (ServerPlayNetworking.canSend(player, GlitchPayload.ID)) {
+            boolean supported = ServerPlayNetworking.canSend(player, GlitchPayload.ID);
+
+            System.out.println(
+                "[GlitchIdentity] Death payload -> " +
+                player.getName().getString() +
+                " | clientSupport=" + supported +
+                " | victimGlitch=" + glitchVictim +
+                " | killerGlitch=" + glitchKiller
+            );
+
+            if (supported) {
                 ServerPlayNetworking.send(player, payload);
             }
         }
