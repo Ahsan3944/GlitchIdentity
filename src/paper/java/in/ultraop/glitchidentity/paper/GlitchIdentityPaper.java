@@ -31,18 +31,58 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
 
     @Override public void onDisable() { saveStore(); }
 
-    @EventHandler public void onDeath(PlayerDeathEvent event) {
-        Player killer = event.getEntity().getKiller();
-        if (killer == null || !store.contains(killer.getUniqueId())) return;
-        // Paper can replace the death Component, but a vanilla client cannot mutate an already-rendered
-        // chat line. Keep the real name hidden and use a colored static corruption as safe fallback.
+    @EventHandler
+    public void onDeath(PlayerDeathEvent event) {
+        Player victim = event.getEntity();
+        Player killer = victim.getKiller();
+
+        boolean glitchVictim = store.contains(victim.getUniqueId());
+        boolean glitchKiller = killer != null && store.contains(killer.getUniqueId());
+
+        if (!glitchVictim && !glitchKiller) {
+            return;
+        }
+
         var f = in.ultraop.glitchidentity.core.GlitchFrameGenerator.next();
         Component glitch = Component.empty();
         for (int i = 0; i < f.text().length(); i++) {
-            glitch = glitch.append(Component.text(String.valueOf(f.text().charAt(i)))
-                .color(TextColor.color(f.colors()[i])));
+            int cp = f.text().codePoints().skip(i).findFirst().orElse('?');
+            glitch = glitch.append(
+                Component.text(new String(Character.toChars(cp)))
+                    .color(TextColor.color(f.colors()[i]))
+            );
         }
-        event.deathMessage(Component.text(event.getEntity().getName() + " was slain by ").append(glitch));
+
+        Component message = Component.empty();
+
+        if (glitchVictim) {
+            message = message.append(glitch);
+        } else {
+            message = message.append(Component.text(victim.getName()));
+        }
+
+        if (killer != null) {
+            message = message.append(Component.text(" was slain by "));
+
+            if (glitchKiller) {
+                var killerFrame = in.ultraop.glitchidentity.core.GlitchFrameGenerator.next();
+                Component killerGlitch = Component.empty();
+                for (int i = 0; i < killerFrame.text().length(); i++) {
+                    int cp = killerFrame.text().codePoints().skip(i).findFirst().orElse('?');
+                    killerGlitch = killerGlitch.append(
+                        Component.text(new String(Character.toChars(cp)))
+                            .color(TextColor.color(killerFrame.colors()[i]))
+                    );
+                }
+                message = message.append(killerGlitch);
+            } else {
+                message = message.append(Component.text(killer.getName()));
+            }
+        } else {
+            message = message.append(Component.text(" died"));
+        }
+
+        event.deathMessage(message);
     }
 
     @Override public boolean onCommand(CommandSender s, Command c, String l, String[] a) {
@@ -53,7 +93,6 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                 if (a.length < 2) { s.sendMessage("§cUsage: /glitch add <player>"); return true; }
                 Player p = Bukkit.getPlayerExact(a[1]);
                 OfflinePlayer op = p != null ? p : Bukkit.getOfflinePlayer(a[1]);
-                if (op.getUniqueId() == null) { s.sendMessage("§cPlayer not found."); return true; }
                 if (store.add(op.getUniqueId())) { saveStore(); s.sendMessage("§aGlitch enabled for " + a[1]); }
                 else s.sendMessage("§eAlready enabled.");
             }
@@ -88,13 +127,19 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
         store.clear();
         if (!dataFile.exists()) return;
         try (var br = new BufferedReader(new FileReader(dataFile))) {
-            br.lines().map(String::trim).filter(x -> !x.isEmpty()).forEach(x -> { try { store.add(UUID.fromString(x)); } catch (IllegalArgumentException ignored) {} });
+            br.lines().map(String::trim).filter(x -> !x.isEmpty()).forEach(x -> {
+                try { store.add(UUID.fromString(x)); } catch (IllegalArgumentException ignored) {}
+            });
         } catch (IOException e) { getLogger().warning("Could not read players.txt: " + e.getMessage()); }
     }
+
     private void saveStore() {
         if (dataFile == null) return;
         getDataFolder().mkdirs();
-        try (var pw = new PrintWriter(new FileWriter(dataFile))) { store.all().forEach(id -> pw.println(id)); }
-        catch (IOException e) { getLogger().warning("Could not save players.txt: " + e.getMessage()); }
+        try (var pw = new PrintWriter(new FileWriter(dataFile))) {
+            store.all().forEach(id -> pw.println(id));
+        } catch (IOException e) {
+            getLogger().warning("Could not save players.txt: " + e.getMessage());
+        }
     }
 }
