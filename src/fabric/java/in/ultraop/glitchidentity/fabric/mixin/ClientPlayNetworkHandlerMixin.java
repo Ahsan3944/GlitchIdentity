@@ -11,15 +11,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(ClientPlayNetworkHandler.class)
 public abstract class ClientPlayNetworkHandlerMixin {
     @Inject(
-        method = "onDeathMessage(Lnet/minecraft/network/packet/s2c/play/DeathMessageS2CPacket;)V",
+        method = "onDeathMessage",
         at = @At("HEAD"),
-        cancellable = true
+        cancellable = true,
+        require = 1
     )
     private void glitchIdentity$replaceDeathMessage(
         DeathMessageS2CPacket packet,
         CallbackInfo ci
     ) {
-        if (GlitchIdentityFabricClient.shouldReplaceDeathMessage(packet.playerId())) {
+        if (GlitchIdentityFabricClient.handleDeathPacket(packet.playerId())) {
             ci.cancel();
         }
     }
