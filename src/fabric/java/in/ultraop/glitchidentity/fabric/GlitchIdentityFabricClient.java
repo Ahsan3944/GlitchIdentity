@@ -7,7 +7,9 @@ import net.minecraft.text.Text;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 public final class GlitchIdentityFabricClient implements ClientModInitializer {
-    private static final ConcurrentLinkedDeque<GlitchPayload> PENDING_DEATHS =
+    private static final long PENDING_TIMEOUT_NANOS = 5_000_000_000L;
+
+    private static final ConcurrentLinkedDeque<PendingPayload> PENDING_DEATHS =
         new ConcurrentLinkedDeque<>();
 
     @Override
@@ -15,35 +17,30 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
         System.out.println("[GlitchIdentity] Client animation module loaded.");
 
         ClientPlayNetworking.registerGlobalReceiver(GlitchPayload.ID, (incoming, context) -> {
-            PENDING_DEATHS.addLast(incoming);
+            purgeExpired();
 
-            System.out.println(
-                "[GlitchIdentity] Received glitch payload: " +
-                "glitchVictim=" + incoming.glitchVictim() +
-                ", glitchKiller=" + incoming.glitchKiller()
-            );
+            if (incoming.glitchVictim() || incoming.glitchKiller()) {
+                PENDING_DEATHS.addLast(new PendingPayload(incoming, System.nanoTime()));
+            }
         });
     }
 
     public static Text consumeDeathMessage(Text original) {
+        purgeExpired();
+
         String plain = original.getString();
 
-        for (GlitchPayload payload : PENDING_DEATHS) {
+        for (PendingPayload pending : PENDING_DEATHS) {
+            GlitchPayload payload = pending.payload();
             String expected = stripMarkers(payload.message().getString());
 
             if (!expected.equals(plain)) {
                 continue;
             }
 
-            PENDING_DEATHS.remove(payload);
-
-            if (!payload.glitchVictim() && !payload.glitchKiller()) {
-                return null;
+            if (!PENDING_DEATHS.remove(pending)) {
+                continue;
             }
-
-            System.out.println(
-                "[GlitchIdentity] Replacing ChatHud death message: " + plain
-            );
 
             return AnimatedGlitchText.death(
                 payload.message(),
@@ -55,9 +52,23 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
         return null;
     }
 
+    private static void purgeExpired() {
+        long cutoff = System.nanoTime() - PENDING_TIMEOUT_NANOS;
+
+        while (true) {
+            PendingPayload first = PENDING_DEATHS.peekFirst();
+            if (first == null || first.receivedAtNanos() >= cutoff) {
+                return;
+            }
+            PENDING_DEATHS.pollFirst();
+        }
+    }
+
     private static String stripMarkers(String value) {
         return value
             .replace(GlitchTextSanitizer.VICTIM_MARKER, "")
             .replace(GlitchTextSanitizer.KILLER_MARKER, "");
     }
+
+    private record PendingPayload(GlitchPayload payload, long receivedAtNanos) {}
 }
