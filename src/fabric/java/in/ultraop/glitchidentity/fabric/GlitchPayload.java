@@ -1,16 +1,15 @@
 package in.ultraop.glitchidentity.fabric;
 
-import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
+import net.minecraft.text.Text;
+import net.minecraft.text.TextCodecs;
 import net.minecraft.util.Identifier;
 
 public record GlitchPayload(
-    int victimEntityId,
-    String victim,
-    String killer,
+    Text message,
     boolean glitchVictim,
     boolean glitchKiller
 ) implements CustomPayload {
@@ -21,9 +20,7 @@ public record GlitchPayload(
 
     public static final PacketCodec<RegistryByteBuf, GlitchPayload> CODEC =
         PacketCodec.tuple(
-            PacketCodecs.VAR_INT, GlitchPayload::victimEntityId,
-            PacketCodecs.STRING, GlitchPayload::victim,
-            PacketCodecs.STRING, GlitchPayload::killer,
+            TextCodecs.REGISTRY_PACKET_CODEC, GlitchPayload::message,
             PacketCodecs.BOOLEAN, GlitchPayload::glitchVictim,
             PacketCodecs.BOOLEAN, GlitchPayload::glitchKiller,
             GlitchPayload::new
