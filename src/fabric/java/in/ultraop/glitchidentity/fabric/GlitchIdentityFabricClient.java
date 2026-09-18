@@ -24,30 +24,40 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
                 ", glitchVictim=" + incoming.glitchVictim() +
                 ", glitchKiller=" + incoming.glitchKiller()
             );
-
-            MinecraftClient client = context.client();
-            if (client.inGameHud != null) {
-                client.inGameHud.getChatHud().addMessage(
-                    AnimatedGlitchText.death(
-                        incoming.glitchVictim() ? "" : incoming.victim(),
-                        incoming.glitchKiller() ? "" : incoming.killer(),
-                        incoming.glitchVictim(),
-                        incoming.glitchKiller()
-                    )
-                );
-            }
         });
     }
 
-    public static boolean shouldReplaceDeathMessage(int victimEntityId) {
-        boolean replaced = PENDING_DEATHS.remove(victimEntityId) != null;
+    public static boolean handleDeathPacket(int victimEntityId) {
+        GlitchPayload payload = PENDING_DEATHS.remove(victimEntityId);
 
-        System.out.println(
-            "[GlitchIdentity] Death packet victimId=" +
-            victimEntityId +
-            ", customReplacement=" + replaced
+        if (payload == null) {
+            System.out.println(
+                "[GlitchIdentity] Death packet victimId=" +
+                victimEntityId +
+                " had no glitch payload; vanilla message kept."
+            );
+            return false;
+        }
+
+        MinecraftClient client = MinecraftClient.getInstance();
+        if (client.inGameHud == null) {
+            return false;
+        }
+
+        client.inGameHud.getChatHud().addMessage(
+            AnimatedGlitchText.death(
+                payload.glitchVictim() ? "" : payload.victim(),
+                payload.glitchKiller() ? "" : payload.killer(),
+                payload.glitchVictim(),
+                payload.glitchKiller()
+            )
         );
 
-        return replaced;
+        System.out.println(
+            "[GlitchIdentity] Replaced death message for victimId=" +
+            victimEntityId
+        );
+
+        return true;
     }
 }
