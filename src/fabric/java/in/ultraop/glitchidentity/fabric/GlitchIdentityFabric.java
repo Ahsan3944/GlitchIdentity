@@ -2,7 +2,7 @@ package in.ultraop.glitchidentity.fabric;
 
 import in.ultraop.glitchidentity.core.GlitchMessages;
 import in.ultraop.glitchidentity.core.GlitchStore;
-import net.fabricmc.api.ModInitializer;
+import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.command.argument.EntityArgumentType;
@@ -10,12 +10,12 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
-public final class GlitchIdentityFabric implements ModInitializer {
+public final class GlitchIdentityFabric implements DedicatedServerModInitializer {
     public static final String MOD_ID = "glitchidentity";
     public static final GlitchStore STORE = new GlitchStore();
 
     @Override
-    public void onInitialize() {
+    public void onInitializeServer() {
         FabricConfig.load(STORE);
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
@@ -109,9 +109,6 @@ public final class GlitchIdentityFabric implements ModInitializer {
             )
         );
 
-        // Prepare the client-side replacement before vanilla sends the death packet.
-        // This lets the Fabric client cancel the real death line and render the animated
-        // replacement inside the normal chat HUD.
         ServerLivingEntityEvents.ALLOW_DEATH.register((entity, damageSource, damageAmount) -> {
             if (!(entity instanceof ServerPlayerEntity victim)) {
                 return true;
