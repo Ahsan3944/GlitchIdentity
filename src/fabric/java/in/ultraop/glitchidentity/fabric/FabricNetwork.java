@@ -1,12 +1,14 @@
 package in.ultraop.glitchidentity.fabric;
 
+import in.ultraop.glitchidentity.core.GlitchFrameGenerator;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.network.RegistryByteBuf;
+import net.minecraft.network.codec.PacketCodec;
 import net.minecraft.network.codec.PacketCodecs;
 import net.minecraft.network.packet.CustomPayload;
-import net.minecraft.network.codec.PacketCodec;
-import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 
 public final class FabricNetwork {
@@ -57,10 +59,51 @@ public final class FabricNetwork {
             glitchKiller
         );
 
+        Text fallback = buildFallbackMessage(victim, killer, glitchVictim, glitchKiller);
+
         for (ServerPlayerEntity player : world.getServer().getPlayerManager().getPlayerList()) {
             if (ServerPlayNetworking.canSend(player, GlitchPayload.ID)) {
                 ServerPlayNetworking.send(player, payload);
+            } else {
+                player.sendMessage(fallback);
             }
         }
+    }
+
+    private static Text buildFallbackMessage(
+        ServerPlayerEntity victim,
+        ServerPlayerEntity killer,
+        boolean glitchVictim,
+        boolean glitchKiller
+    ) {
+        GlitchFrameGenerator.Frame victimFrame = glitchVictim
+            ? GlitchFrameGenerator.next()
+            : null;
+
+        GlitchFrameGenerator.Frame killerFrame = glitchKiller
+            ? GlitchFrameGenerator.next()
+            : null;
+
+        Text message = Text.empty();
+
+        if (glitchVictim) {
+            message = message.copy().append(Text.literal(victimFrame.text()));
+        } else {
+            message = message.copy().append(Text.literal(victim.getName().getString()));
+        }
+
+        if (killer != null) {
+            message = message.copy().append(Text.literal(" was slain by "));
+
+            if (glitchKiller) {
+                message = message.copy().append(Text.literal(killerFrame.text()));
+            } else {
+                message = message.copy().append(Text.literal(killer.getName().getString()));
+            }
+        } else {
+            message = message.copy().append(Text.literal(" died"));
+        }
+
+        return message;
     }
 }
