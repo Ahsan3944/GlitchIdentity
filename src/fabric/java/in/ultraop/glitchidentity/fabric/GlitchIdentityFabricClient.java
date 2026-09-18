@@ -13,8 +13,17 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
 
     @Override
     public void onInitializeClient() {
+        System.out.println("[GlitchIdentity] Client animation module loaded.");
+
         ClientPlayNetworking.registerGlobalReceiver(GlitchPayload.ID, (incoming, context) -> {
             PENDING_DEATHS.put(incoming.victimEntityId(), incoming);
+
+            System.out.println(
+                "[GlitchIdentity] Received glitch payload: victimId=" +
+                incoming.victimEntityId() +
+                ", glitchVictim=" + incoming.glitchVictim() +
+                ", glitchKiller=" + incoming.glitchKiller()
+            );
 
             MinecraftClient client = context.client();
             if (client.inGameHud != null) {
@@ -31,6 +40,14 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
     }
 
     public static boolean shouldReplaceDeathMessage(int victimEntityId) {
-        return PENDING_DEATHS.remove(victimEntityId) != null;
+        boolean replaced = PENDING_DEATHS.remove(victimEntityId) != null;
+
+        System.out.println(
+            "[GlitchIdentity] Death packet victimId=" +
+            victimEntityId +
+            ", customReplacement=" + replaced
+        );
+
+        return replaced;
     }
 }
