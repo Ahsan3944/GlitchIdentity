@@ -1,0 +1,15 @@
+name: GlitchIdentity
+version: ${version}
+main: in.ultraop.glitchidentity.paper.GlitchIdentityPaper
+api-version: '1.21'
+author: UltraOP
+description: Animated/corrupted killer identities for death messages.
+commands:
+  glitch:
+    description: Manage glitch identities
+    usage: /glitch <add|remove|list|reload|help>
+    permission: glitchidentity.admin
+permissions:
+  glitchidentity.admin:
+    description: Allows GlitchIdentity commands
+    default: op
