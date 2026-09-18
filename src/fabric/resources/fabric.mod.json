@@ -7,7 +7,7 @@
   "authors": ["UltraOP"],
   "environment": "*",
   "entrypoints": {
-    "main": ["in.ultraop.glitchidentity.fabric.GlitchIdentityFabric"],
+    "server": ["in.ultraop.glitchidentity.fabric.GlitchIdentityFabric"],
     "client": ["in.ultraop.glitchidentity.fabric.GlitchIdentityFabricClient"]
   },
   "mixins": ["glitchidentity.mixins.json"],
