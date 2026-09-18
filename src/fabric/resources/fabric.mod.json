@@ -4,15 +4,27 @@
   "version": "${version}",
   "name": "Glitch Identity",
   "description": "Animated corrupted player identities for Minecraft 1.21.11.",
-  "authors": ["UltraOP"],
+  "authors": [
+    "UltraOP"
+  ],
   "environment": "*",
   "entrypoints": {
-    "server": ["in.ultraop.glitchidentity.fabric.GlitchIdentityFabric"],
-    "client": ["in.ultraop.glitchidentity.fabric.GlitchIdentityFabricClient"]
+    "server": [
+      "in.ultraop.glitchidentity.fabric.GlitchIdentityFabric"
+    ],
+    "client": [
+      "in.ultraop.glitchidentity.fabric.GlitchIdentityFabricClient"
+    ]
   },
   "depends": {
     "fabricloader": ">=0.19.3",
     "minecraft": "~1.21.11",
     "fabric-api": "*"
-  }
+  },
+  "mixins": [
+    {
+      "config": "glitchidentity.client.mixins.json",
+      "environment": "client"
+    }
+  ]
 }
