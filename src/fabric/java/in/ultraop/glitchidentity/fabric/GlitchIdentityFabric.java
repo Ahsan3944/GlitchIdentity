@@ -141,6 +141,13 @@ public final class GlitchIdentityFabric implements ModInitializer {
                     .then(CommandManager.literal("add")
                         .then(CommandManager.argument("player", StringArgumentType.word())
                             .suggests((context, builder) -> suggestTargets(context, builder, true))
+                            .executes(ctx -> {
+                                ctx.getSource().sendError(Text.literal(
+                                    "§cUsage: /glitch add <player|@> <color>"));
+                                ctx.getSource().sendError(Text.literal(
+                                    "§7Color must be §fcolorful §7or §fwhite§7."));
+                                return 0;
+                            })
                             .then(CommandManager.literal("colorful")
                                 .executes(ctx -> addCommand(ctx, GlitchColorMode.COLORFUL)))
                             .then(CommandManager.literal("white")
