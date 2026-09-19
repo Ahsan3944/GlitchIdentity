@@ -58,6 +58,17 @@ class GlitchCoreTest {
     }
 
     @Test
+    void messageFingerprintIsStableAndChangesWithMessage() {
+        String first = GlitchMessageKey.of("kokoro was slain by gsgsfee");
+        String second = GlitchMessageKey.of("kokoro was slain by gsgsfee");
+        String different = GlitchMessageKey.of("kokoro left the game");
+
+        assertEquals(first, second);
+        assertNotEquals(first, different);
+        assertEquals(64, first.length());
+    }
+
+    @Test
     void storeIsIdempotentAndRemovesCorrectly() {
         GlitchStore store = new GlitchStore();
         UUID id = UUID.randomUUID();
