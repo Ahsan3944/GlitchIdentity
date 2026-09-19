@@ -119,7 +119,7 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
 
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "add" -> {
-                if (args.length < 3) {
+                if (args.length != 3) {
                     sender.sendMessage("§cUsage: /glitch add <player|@> <color>");
                     sender.sendMessage("§7Color must be §fcolorful §7or §fwhite§7.");
                     return true;
