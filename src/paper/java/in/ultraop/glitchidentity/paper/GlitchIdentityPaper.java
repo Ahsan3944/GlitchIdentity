@@ -1,5 +1,6 @@
 package in.ultraop.glitchidentity.paper;
 
+import in.ultraop.glitchidentity.core.GlitchColorMode;
 import in.ultraop.glitchidentity.core.GlitchFrameGenerator;
 import in.ultraop.glitchidentity.core.GlitchMessages;
 import in.ultraop.glitchidentity.core.GlitchStore;
@@ -66,17 +67,29 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
         if (message == null) return;
 
         if (glitchVictim) {
-            message = replaceLiteralWithGlitch(message, victim.getName());
+            message = replaceLiteralWithGlitch(
+                message,
+                victim.getName(),
+                store.modeOf(victim.getUniqueId())
+            );
         }
         if (glitchKiller) {
-            message = replaceLiteralWithGlitch(message, killer.getName());
+            message = replaceLiteralWithGlitch(
+                message,
+                killer.getName(),
+                store.modeOf(killer.getUniqueId())
+            );
         }
 
         event.deathMessage(message);
     }
 
-    private Component replaceLiteralWithGlitch(Component message, String name) {
-        var frame = GlitchFrameGenerator.next();
+    private Component replaceLiteralWithGlitch(
+        Component message,
+        String name,
+        GlitchColorMode mode
+    ) {
+        var frame = GlitchFrameGenerator.next(mode);
         int[] codePoints = frame.text().codePoints().toArray();
 
         Component glitch = Component.empty();
@@ -106,18 +119,26 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
 
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "add" -> {
-                if (args.length < 2) {
-                    sender.sendMessage("§cUsage: /glitch add <player|@>");
+                if (args.length < 3) {
+                    sender.sendMessage("§cUsage: /glitch add <player|@> <color>");
+                    sender.sendMessage("§7Color must be §fcolorful §7or §fwhite§7.");
+                    return true;
+                }
+
+                GlitchColorMode mode = GlitchColorMode.fromArgument(args[2]);
+                if (mode == null) {
+                    sender.sendMessage("§cInvalid color. Use §fcolorful §cor §fwhite§c.");
                     return true;
                 }
 
                 if (args[1].equals("@")) {
-                    int added = 0;
+                    int changed = 0;
                     for (Player player : Bukkit.getOnlinePlayers()) {
-                        if (store.add(player.getUniqueId())) added++;
+                        if (store.add(player.getUniqueId(), mode)) changed++;
                     }
-                    if (added > 0) saveStore();
-                    sender.sendMessage("§aGlitch enabled for §f" + added + "§a online player(s).");
+                    if (changed > 0) saveStore();
+                    sender.sendMessage("§aGlitch " + mode.name().toLowerCase()
+                        + " mode configured for §f" + changed + "§a online player(s).");
                     return true;
                 }
 
@@ -131,11 +152,13 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                     return true;
                 }
 
-                if (store.add(offlinePlayer.getUniqueId())) {
+                if (store.add(offlinePlayer.getUniqueId(), mode)) {
                     saveStore();
-                    sender.sendMessage("§aGlitch enabled for " + args[1]);
+                    sender.sendMessage("§aGlitch " + mode.name().toLowerCase()
+                        + " mode configured for " + args[1]);
                 } else {
-                    sender.sendMessage("§eAlready enabled.");
+                    sender.sendMessage("§eAlready configured with "
+                        + mode.name().toLowerCase() + " mode.");
                 }
             }
             case "remove" -> {
@@ -181,7 +204,9 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                     .sorted(Comparator.comparing(UUID::toString))
                     .forEach(id -> {
                         OfflinePlayer player = Bukkit.getOfflinePlayer(id);
-                        sender.sendMessage("§7- §f" + (player.getName() == null ? id : player.getName()));
+                        sender.sendMessage("§7- §f"
+                            + (player.getName() == null ? id : player.getName())
+                            + " §8[" + store.modeOf(id).name() + "]");
                     });
             }
             case "reload" -> {
@@ -215,6 +240,13 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
 
             return suggestions.stream()
                 .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(prefix))
+                .toList();
+        }
+
+        if (args.length == 3 && args[0].equalsIgnoreCase("add")) {
+            String prefix = args[2].toLowerCase(Locale.ROOT);
+            return List.of("colorful", "white").stream()
+                .filter(value -> value.startsWith(prefix))
                 .toList();
         }
 
@@ -253,7 +285,18 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                 .filter(line -> !line.isEmpty() && !line.startsWith("#"))
                 .forEach(line -> {
                     try {
-                        store.add(UUID.fromString(line));
+                        String[] parts = line.split("\\|", 2);
+                        UUID id = UUID.fromString(parts[0].trim());
+                        GlitchColorMode mode = parts.length == 1
+                            ? GlitchColorMode.COLORFUL
+                            : GlitchColorMode.fromArgument(parts[1].trim());
+
+                        if (mode == null) {
+                            getLogger().warning("Ignoring malformed color mode in players.txt: " + line);
+                            return;
+                        }
+
+                        store.add(id, mode);
                     } catch (IllegalArgumentException ignored) {
                         getLogger().warning("Ignoring malformed UUID in players.txt: " + line);
                     }
@@ -269,7 +312,7 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
         try (var writer = new PrintWriter(new FileWriter(dataFile))) {
             store.all().stream()
                 .sorted(Comparator.comparing(UUID::toString))
-                .forEach(writer::println);
+                .forEach(id -> writer.println(id + "|" + store.modeOf(id).name()));
         } catch (IOException e) {
             getLogger().warning("Could not save players.txt: " + e.getMessage());
         }
