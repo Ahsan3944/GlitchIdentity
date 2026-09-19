@@ -3,6 +3,7 @@ package in.ultraop.glitchidentity.fabric;
 import com.mojang.brigadier.context.CommandContext;
 import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import in.ultraop.glitchidentity.core.GlitchColorMode;
 import in.ultraop.glitchidentity.core.GlitchMessages;
 import in.ultraop.glitchidentity.core.GlitchStore;
 import net.fabricmc.api.ModInitializer;
@@ -48,7 +49,16 @@ public final class GlitchIdentityFabric implements ModInitializer {
 
         PENDING_DEATH_REPLACEMENTS.put(
             victim.getUuid(),
-            FabricNetwork.createSafeDeathMessage(victim, killer, glitchVictim, glitchKiller)
+            FabricNetwork.createSafeDeathMessage(
+                victim,
+                killer,
+                glitchVictim,
+                glitchKiller,
+                STORE.modeOf(victim.getUuid()),
+                killer == null
+                    ? GlitchColorMode.COLORFUL
+                    : STORE.modeOf(killer.getUuid())
+            )
         );
     }
 
@@ -76,14 +86,17 @@ public final class GlitchIdentityFabric implements ModInitializer {
         }
     }
 
-    private static int addAllOnline(net.minecraft.server.MinecraftServer server) {
-        int added = 0;
+    private static int addAllOnline(
+        net.minecraft.server.MinecraftServer server,
+        GlitchColorMode mode
+    ) {
+        int changed = 0;
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
-            if (STORE.add(player.getUuid())) {
-                added++;
+            if (STORE.add(player.getUuid(), mode)) {
+                changed++;
             }
         }
-        return added;
+        return changed;
     }
 
     private static int removeAll() {
@@ -116,6 +129,15 @@ public final class GlitchIdentityFabric implements ModInitializer {
         return CommandSource.suggestMatching(candidates, builder);
     }
 
+    private static CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestColors(
+        SuggestionsBuilder builder
+    ) {
+        return CommandSource.suggestMatching(
+            List.of("colorful", "white"),
+            builder
+        );
+    }
+
     @Override
     public void onInitialize() {
         GlitchPayload.register();
@@ -128,36 +150,10 @@ public final class GlitchIdentityFabric implements ModInitializer {
                     .then(CommandManager.literal("add")
                         .then(CommandManager.argument("player", StringArgumentType.word())
                             .suggests((context, builder) -> suggestTargets(context, builder, true))
-                            .executes(ctx -> {
-                                String input = StringArgumentType.getString(ctx, "player");
-
-                                if (input.equals("@")) {
-                                    int added = addAllOnline(ctx.getSource().getServer());
-                                    if (added > 0) FabricConfig.save(STORE);
-                                    int total = ctx.getSource().getServer().getPlayerManager().getCurrentPlayerCount();
-                                    ctx.getSource().sendFeedback(
-                                        () -> Text.literal("§aGlitch enabled for §f" + added
-                                            + "§a online player(s). §7(" + total + " online)"),
-                                        false
-                                    );
-                                    return 1;
-                                }
-
-                                UUID playerId = resolvePlayerId(ctx.getSource().getServer(), input);
-                                if (playerId == null) {
-                                    ctx.getSource().sendError(Text.literal(
-                                        "§cPlayer must be online by name or supplied as a UUID."));
-                                    return 0;
-                                }
-
-                                boolean added = STORE.add(playerId);
-                                if (added) FabricConfig.save(STORE);
-                                ctx.getSource().sendFeedback(
-                                    () -> Text.literal(added ? "§aGlitch enabled." : "§eAlready enabled."),
-                                    false
-                                );
-                                return 1;
-                            })))
+                            .then(CommandManager.literal("colorful")
+                                .executes(ctx -> addCommand(ctx, GlitchColorMode.COLORFUL)))
+                            .then(CommandManager.literal("white")
+                                .executes(ctx -> addCommand(ctx, GlitchColorMode.WHITE))))
                     .then(CommandManager.literal("remove")
                         .then(CommandManager.argument("player", StringArgumentType.word())
                             .suggests((context, builder) -> suggestTargets(context, builder, false))
@@ -199,9 +195,11 @@ public final class GlitchIdentityFabric implements ModInitializer {
                             var lines = STORE.all().stream()
                                 .map(id -> {
                                     ServerPlayerEntity online = server.getPlayerManager().getPlayer(id);
-                                    if (online != null) return online.getName().getString();
+                                    String name = online != null
+                                        ? online.getName().getString()
+                                        : id.toString();
 
-                                    return id.toString();
+                                    return name + " [" + STORE.modeOf(id).name() + "]";
                                 })
                                 .sorted(String.CASE_INSENSITIVE_ORDER)
                                 .toList();
@@ -239,5 +237,49 @@ public final class GlitchIdentityFabric implements ModInitializer {
                         }))
             )
         );
+    }
+
+    private static int addCommand(
+        CommandContext<ServerCommandSource> context,
+        GlitchColorMode mode
+    ) {
+        String input = StringArgumentType.getString(context, "player");
+
+        if (input.equals("@")) {
+            int changed = addAllOnline(context.getSource().getServer(), mode);
+            if (changed > 0) {
+                FabricConfig.save(STORE);
+            }
+
+            int total = context.getSource().getServer().getPlayerManager().getCurrentPlayerCount();
+            context.getSource().sendFeedback(
+                () -> Text.literal("§aGlitch " + mode.name().toLowerCase() + " mode configured for §f"
+                    + changed + "§a online player(s). §7(" + total + " online)"),
+                false
+            );
+            return 1;
+        }
+
+        UUID playerId = resolvePlayerId(context.getSource().getServer(), input);
+        if (playerId == null) {
+            context.getSource().sendError(Text.literal(
+                "§cPlayer must be online by name or supplied as a UUID."));
+            return 0;
+        }
+
+        boolean changed = STORE.add(playerId, mode);
+        if (changed) {
+            FabricConfig.save(STORE);
+        }
+
+        context.getSource().sendFeedback(
+            () -> Text.literal(
+                changed
+                    ? "§aGlitch " + mode.name().toLowerCase() + " mode configured."
+                    : "§eAlready configured with " + mode.name().toLowerCase() + " mode."
+            ),
+            false
+        );
+        return 1;
     }
 }
