@@ -1,5 +1,6 @@
 package in.ultraop.glitchidentity.fabric;
 
+import in.ultraop.glitchidentity.core.GlitchColorMode;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.Ownable;
 import net.minecraft.entity.damage.DamageSource;
@@ -13,7 +14,9 @@ public final class FabricNetwork {
         ServerPlayerEntity victim,
         ServerPlayerEntity killer,
         boolean glitchVictim,
-        boolean glitchKiller
+        boolean glitchKiller,
+        GlitchColorMode victimMode,
+        GlitchColorMode killerMode
     ) {
         Text deathMessage = victim.getDamageTracker().getDeathMessage();
 
@@ -23,12 +26,16 @@ public final class FabricNetwork {
             sanitized = GlitchTextSanitizer.sanitize(
                 sanitized,
                 victim.getName().getString(),
-                "\u0000never-killer\u0000"
+                "\u0000never-killer\u0000",
+                victimMode,
+                GlitchColorMode.COLORFUL
             );
             sanitized = GlitchTextSanitizer.sanitize(
                 sanitized,
                 victim.getDisplayName().getString(),
-                "\u0000never-killer-display\u0000"
+                "\u0000never-killer-display\u0000",
+                victimMode,
+                GlitchColorMode.COLORFUL
             );
         }
 
@@ -36,12 +43,16 @@ public final class FabricNetwork {
             sanitized = GlitchTextSanitizer.sanitize(
                 sanitized,
                 "\u0000never-victim\u0000",
-                killer.getName().getString()
+                killer.getName().getString(),
+                GlitchColorMode.COLORFUL,
+                killerMode
             );
             sanitized = GlitchTextSanitizer.sanitize(
                 sanitized,
                 "\u0000never-victim-display\u0000",
-                killer.getDisplayName().getString()
+                killer.getDisplayName().getString(),
+                GlitchColorMode.COLORFUL,
+                killerMode
             );
         }
 
