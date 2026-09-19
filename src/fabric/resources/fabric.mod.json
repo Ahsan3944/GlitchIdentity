@@ -22,6 +22,7 @@
     "fabric-api": "*"
   },
   "mixins": [
+    "glitchidentity.mixins.json",
     {
       "config": "glitchidentity.client.mixins.json",
       "environment": "client"
