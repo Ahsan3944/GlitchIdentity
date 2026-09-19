@@ -1,5 +1,6 @@
 package in.ultraop.glitchidentity.fabric;
 
+import in.ultraop.glitchidentity.core.GlitchMessageKey;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.Ownable;
@@ -19,9 +20,13 @@ public final class FabricNetwork {
         boolean glitchVictim,
         boolean glitchKiller
     ) {
-        Text deathMessage = damageSource.getDeathMessage(victim);
+        // Use the same DamageTracker message that vanilla uses for the death line.
+        Text deathMessage = victim.getDamageTracker().getDeathMessage();
 
-        String victimName = glitchVictim ? victim.getDisplayName().getString() : "\u0000never-victim\u0000";
+        String victimName = glitchVictim
+            ? victim.getDisplayName().getString()
+            : "\u0000never-victim\u0000";
+
         String killerName = glitchKiller && killer != null
             ? killer.getDisplayName().getString()
             : "\u0000never-killer\u0000";
@@ -34,6 +39,7 @@ public final class FabricNetwork {
 
         GlitchPayload payload = new GlitchPayload(
             safeMessage,
+            GlitchMessageKey.of(deathMessage.getString()),
             victim.getId(),
             glitchVictim,
             glitchKiller
