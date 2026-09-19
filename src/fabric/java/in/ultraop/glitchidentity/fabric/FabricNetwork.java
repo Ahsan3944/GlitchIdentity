@@ -34,6 +34,7 @@ public final class FabricNetwork {
 
         GlitchPayload payload = new GlitchPayload(
             safeMessage,
+            victim.getId(),
             glitchVictim,
             glitchKiller
         );
