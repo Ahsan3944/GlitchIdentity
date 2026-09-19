@@ -7,7 +7,7 @@ import net.minecraft.text.Text;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 public final class GlitchIdentityFabricClient implements ClientModInitializer {
-    private static final long PENDING_TIMEOUT_NANOS = 5_000_000_000L;
+    private static final long PENDING_TIMEOUT_NANOS = 15_000_000_000L;
 
     private static final ConcurrentLinkedDeque<PendingPayload> PENDING_DEATHS =
         new ConcurrentLinkedDeque<>();
@@ -26,15 +26,21 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
     }
 
     public static Text consumeDeathMessage(Text original) {
+        return consumeDeathMessage(original, -1);
+    }
+
+    public static Text consumeDeathMessage(Text original, int victimEntityId) {
         purgeExpired();
 
         String plain = original.getString();
 
         for (PendingPayload pending : PENDING_DEATHS) {
             GlitchPayload payload = pending.payload();
-            String expected = stripMarkers(payload.message().getString());
 
-            if (!expected.equals(plain)) {
+            boolean idMatches = victimEntityId >= 0 && payload.victimEntityId() == victimEntityId;
+            boolean textMatches = stripMarkers(payload.message().getString()).equals(plain);
+
+            if (!idMatches && !textMatches) {
                 continue;
             }
 
