@@ -10,7 +10,11 @@ public final class GlitchStore {
     private final Map<UUID, GlitchColorMode> enabled = new LinkedHashMap<>();
 
     public boolean add(UUID id) {
-        return add(id, GlitchColorMode.COLORFUL);
+        if (enabled.containsKey(id)) {
+            return false;
+        }
+        enabled.put(id, GlitchColorMode.COLORFUL);
+        return true;
     }
 
     public boolean add(UUID id, GlitchColorMode mode) {
@@ -41,6 +45,6 @@ public final class GlitchStore {
 
     public void load(Iterable<UUID> ids) {
         enabled.clear();
-        ids.forEach(id -> add(id, GlitchColorMode.COLORFUL));
+        ids.forEach(this::add);
     }
 }
