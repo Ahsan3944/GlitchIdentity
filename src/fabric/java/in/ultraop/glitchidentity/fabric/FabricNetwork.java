@@ -16,7 +16,6 @@ public final class FabricNetwork {
         ServerWorld world,
         ServerPlayerEntity victim,
         ServerPlayerEntity killer,
-        DamageSource damageSource,
         boolean glitchVictim,
         boolean glitchKiller
     ) {
