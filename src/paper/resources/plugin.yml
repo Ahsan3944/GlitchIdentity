@@ -6,8 +6,8 @@ author: UltraOP
 description: Animated/corrupted killer identities for death messages.
 commands:
   glitch:
-    description: Manage glitch identities
-    usage: /glitch <add|remove|list|reload|help>
+    description: Manage GlitchIdentity
+    usage: /glitch <add|remove|list|reload|version|help>
     permission: glitchidentity.admin
 permissions:
   glitchidentity.admin:
