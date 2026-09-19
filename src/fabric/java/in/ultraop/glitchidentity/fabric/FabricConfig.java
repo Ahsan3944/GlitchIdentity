@@ -1,5 +1,6 @@
 package in.ultraop.glitchidentity.fabric;
 
+import in.ultraop.glitchidentity.core.GlitchColorMode;
 import in.ultraop.glitchidentity.core.GlitchStore;
 import net.fabricmc.loader.api.FabricLoader;
 
@@ -32,7 +33,20 @@ public final class FabricConfig {
                 }
 
                 try {
-                    store.add(UUID.fromString(value));
+                    String[] parts = value.split("\\|", 2);
+                    UUID id = UUID.fromString(parts[0].trim());
+                    GlitchColorMode mode = parts.length == 1
+                        ? GlitchColorMode.COLORFUL
+                        : GlitchColorMode.fromArgument(parts[1].trim());
+
+                    if (mode == null) {
+                        System.err.println(
+                            "[GlitchIdentity] Ignoring malformed color mode in " + FILE + ": " + value
+                        );
+                        continue;
+                    }
+
+                    store.add(id, mode);
                 } catch (IllegalArgumentException ignored) {
                     System.err.println("[GlitchIdentity] Ignoring malformed UUID in " + FILE + ": " + value);
                 }
@@ -49,7 +63,10 @@ public final class FabricConfig {
             Path temp = FILE.resolveSibling(FILE.getFileName() + ".tmp");
             StringBuilder data = new StringBuilder();
             for (UUID id : store.all()) {
-                data.append(id).append(System.lineSeparator());
+                data.append(id)
+                    .append("|")
+                    .append(store.modeOf(id).name())
+                    .append(System.lineSeparator());
             }
 
             Files.writeString(temp, data.toString(), StandardCharsets.UTF_8);
