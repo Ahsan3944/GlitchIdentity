@@ -132,7 +132,11 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                     sender.sendMessage("§cUsage: /glitch remove <player>");
                     return true;
                 }
-                OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(args[1]);
+                OfflinePlayer offlinePlayer = resolveOfflinePlayerWithoutNetwork(args[1]);
+                if (offlinePlayer == null) {
+                    sender.sendMessage("§cPlayer is not online or cached. Use the player's UUID or have them join the server first.");
+                    return true;
+                }
                 if (store.remove(offlinePlayer.getUniqueId())) {
                     saveStore();
                     sender.sendMessage("§aGlitch removed for " + args[1]);
