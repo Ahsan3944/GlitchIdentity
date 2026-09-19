@@ -32,12 +32,14 @@ public final class AnimatedGlitchText implements Text {
 
     @Override
     public PlainTextContent getContent() {
-        return PlainTextContent.EMPTY;
+        return (PlainTextContent) Text.literal(
+            renderString(template.getString())
+        ).getContent();
     }
 
     @Override
     public Style getStyle() {
-        return Style.EMPTY;
+        return template.getStyle();
     }
 
     @Override
