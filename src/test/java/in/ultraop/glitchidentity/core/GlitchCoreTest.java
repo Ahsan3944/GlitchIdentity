@@ -24,6 +24,21 @@ class GlitchCoreTest {
     }
 
     @Test
+    void whiteFramesUseOnlyWhite() {
+        for (int i = 0; i < 500; i++) {
+            GlitchFrameGenerator.Frame frame =
+                GlitchFrameGenerator.next(GlitchColorMode.WHITE);
+
+            int[] codePoints = frame.text().codePoints().toArray();
+            assertEquals(codePoints.length, frame.colors().length);
+
+            for (int color : frame.colors()) {
+                assertEquals(0xFFFFFF, color);
+            }
+        }
+    }
+
+    @Test
     void generatedFramesNeverContainFormattingControlCharacters() {
         for (int i = 0; i < 1000; i++) {
             assertFalse(GlitchFrameGenerator.next().text().contains("§"));
@@ -44,7 +59,7 @@ class GlitchCoreTest {
             "αβγδεζηικμνξοπρστφχψω" +
             "←↑→↓↔↕↖↗↘↙⇐⇒⇔⇑⇓⇕⇖⇗⇘⇙⇞⇟" +
             "∂∇√∞∑∏∫∮∴∵≈≠≤≥±×÷∩∪∧∨⊕⊗⊙⊥" +
-            "⩓⩠⪔⪕⪖⪗⪙⪚⪛⪜⪝" +
+            "⩓⩠⪔⪕⪖⪙⪚⪛⪜⪝" +
             "ⅧⅨⅩⅪⅫↂↈ∳∲" +
             "¶†‡•°※⁂★☆✦✧✶✪❖✸✻" +
             "◆◇◈●○■□▲△▼▽" +
@@ -83,8 +98,21 @@ class GlitchCoreTest {
         assertTrue(store.add(id));
         assertFalse(store.add(id));
         assertTrue(store.contains(id));
+        assertEquals(GlitchColorMode.COLORFUL, store.modeOf(id));
         assertTrue(store.remove(id));
         assertFalse(store.contains(id));
         assertFalse(store.remove(id));
+    }
+
+    @Test
+    void storeSupportsBothColorModes() {
+        GlitchStore store = new GlitchStore();
+        UUID id = UUID.randomUUID();
+
+        assertTrue(store.add(id, GlitchColorMode.WHITE));
+        assertEquals(GlitchColorMode.WHITE, store.modeOf(id));
+        assertFalse(store.add(id, GlitchColorMode.WHITE));
+        assertTrue(store.add(id, GlitchColorMode.COLORFUL));
+        assertEquals(GlitchColorMode.COLORFUL, store.modeOf(id));
     }
 }
