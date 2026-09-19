@@ -8,12 +8,11 @@ import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.command.*;
+import org.bukkit.damage.DamageSource;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
-import org.bukkit.event.player.PlayerQuitEvent;
-import org.bukkit.event.player.PlayerRegisterChannelEvent;
-import org.bukkit.event.player.PlayerUnregisterChannelEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -21,24 +20,17 @@ import java.io.*;
 import java.util.*;
 
 public final class GlitchIdentityPaper extends JavaPlugin implements Listener, CommandExecutor, TabCompleter {
-    private static final String ADMIN_PERMISSION = "glitchidentity.admin";
-    private static final String GLITCH_CHANNEL = "glitchidentity:glitch";
-
     private final GlitchStore store = new GlitchStore();
-    private final Set<UUID> animatedClients = new HashSet<>();
     private File dataFile;
 
     @Override
     public void onEnable() {
         dataFile = new File(getDataFolder(), "players.txt");
         loadStore();
-
         getServer().getPluginManager().registerEvents(this, this);
-        getServer().getMessenger().registerOutgoingPluginChannel(this, GLITCH_CHANNEL);
         Objects.requireNonNull(getCommand("glitch")).setExecutor(this);
         Objects.requireNonNull(getCommand("glitch")).setTabCompleter(this);
-
-        getLogger().info("GlitchIdentity enabled. Paper supports animated Fabric clients and static fallback for vanilla clients.");
+        getLogger().info("GlitchIdentity enabled. Paper uses a non-leaking static fallback.");
     }
 
     @Override
@@ -48,72 +40,39 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
+        if (!event.getShowDeathMessages()) return;
+
         Player victim = event.getEntity();
-        Player killer = victim.getKiller();
+        DamageSource source = event.getDamageSource();
+
+        Player killer = null;
+        Entity causing = source.getCausingEntity();
+        Entity direct = source.getDirectEntity();
+
+        if (causing instanceof Player player) {
+            killer = player;
+        } else if (direct instanceof Player player) {
+            killer = player;
+        } else {
+            killer = victim.getKiller();
+        }
 
         boolean glitchVictim = store.contains(victim.getUniqueId());
         boolean glitchKiller = killer != null && store.contains(killer.getUniqueId());
 
-        if (!glitchVictim && !glitchKiller) {
-            return;
-        }
-
-        if (!event.getShowDeathMessages()) {
-            return;
-        }
+        if (!glitchVictim && !glitchKiller) return;
 
         Component message = event.deathMessage();
-        if (message == null) {
-            return;
+        if (message == null) return;
+
+        if (glitchVictim) {
+            message = replaceLiteralWithGlitch(message, victim.getName());
+        }
+        if (glitchKiller) {
+            message = replaceLiteralWithGlitch(message, killer.getName());
         }
 
-        Component animatedMessage = replaceWithMarker(
-            message,
-            glitchVictim ? victim.getName() : null,
-            glitchKiller ? (killer != null ? killer.getName() : null) : null
-        );
-        Component staticMessage = replaceLiteralWithGlitch(
-            animatedMessage,
-            GlitchIdentityMarkers.VICTIM_MARKER
-        );
-        staticMessage = replaceLiteralWithGlitch(
-            staticMessage,
-            GlitchIdentityMarkers.KILLER_MARKER
-        );
-
-        event.setShowDeathMessages(false);
-
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            player.sendMessage(
-                animatedClients.contains(player.getUniqueId())
-                    ? animatedMessage
-                    : staticMessage
-            );
-        }
-    }
-
-    private Component replaceWithMarker(
-        Component message,
-        String victimName,
-        String killerName
-    ) {
-        Component result = message;
-
-        if (victimName != null) {
-            result = result.replaceText(builder ->
-                builder.matchLiteral(victimName)
-                    .replacement(Component.text(GlitchIdentityMarkers.VICTIM_MARKER))
-            );
-        }
-
-        if (killerName != null) {
-            result = result.replaceText(builder ->
-                builder.matchLiteral(killerName)
-                    .replacement(Component.text(GlitchIdentityMarkers.KILLER_MARKER))
-            );
-        }
-
-        return result;
+        event.deathMessage(message);
     }
 
     private Component replaceLiteralWithGlitch(Component message, String name) {
@@ -134,32 +93,12 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
         );
     }
 
-    @EventHandler
-    public void onPlayerRegisterChannel(PlayerRegisterChannelEvent event) {
-        if (GLITCH_CHANNEL.equals(event.getChannel())) {
-            animatedClients.add(event.getPlayer().getUniqueId());
-        }
-    }
-
-    @EventHandler
-    public void onPlayerUnregisterChannel(PlayerUnregisterChannelEvent event) {
-        if (GLITCH_CHANNEL.equals(event.getChannel())) {
-            animatedClients.remove(event.getPlayer().getUniqueId());
-        }
-    }
-
-    @EventHandler
-    public void onPlayerQuit(PlayerQuitEvent event) {
-        animatedClients.remove(event.getPlayer().getUniqueId());
-    }
-
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.isOp()) {
             sender.sendMessage("§cYou must be OP to use GlitchIdentity.");
             return true;
         }
-
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             sender.sendMessage(GlitchMessages.HELP);
             return true;
@@ -171,12 +110,8 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                     sender.sendMessage("§cUsage: /glitch add <player>");
                     return true;
                 }
-
                 Player player = Bukkit.getPlayerExact(args[1]);
-                OfflinePlayer offlinePlayer = player != null
-                    ? player
-                    : Bukkit.getOfflinePlayer(args[1]);
-
+                OfflinePlayer offlinePlayer = player != null ? player : Bukkit.getOfflinePlayer(args[1]);
                 if (store.add(offlinePlayer.getUniqueId())) {
                     saveStore();
                     sender.sendMessage("§aGlitch enabled for " + args[1]);
@@ -189,7 +124,6 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                     sender.sendMessage("§cUsage: /glitch remove <player>");
                     return true;
                 }
-
                 OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(args[1]);
                 if (store.remove(offlinePlayer.getUniqueId())) {
                     saveStore();
@@ -203,7 +137,6 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                     sender.sendMessage("§7No glitch players configured.");
                     return true;
                 }
-
                 sender.sendMessage("§dGlitch players:");
                 store.all().stream()
                     .sorted(Comparator.comparing(UUID::toString))
@@ -218,7 +151,6 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
             }
             default -> sender.sendMessage(GlitchMessages.HELP);
         }
-
         return true;
     }
 
@@ -230,7 +162,6 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                 .filter(value -> value.startsWith(prefix))
                 .toList();
         }
-
         if (args.length == 2 &&
             (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("remove"))) {
             String prefix = args[1].toLowerCase(Locale.ROOT);
@@ -240,16 +171,12 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                 .sorted(String.CASE_INSENSITIVE_ORDER)
                 .toList();
         }
-
         return List.of();
     }
 
     private void loadStore() {
         store.clear();
-        if (!dataFile.exists()) {
-            return;
-        }
-
+        if (!dataFile.exists()) return;
         try (var reader = new BufferedReader(new FileReader(dataFile))) {
             reader.lines()
                 .map(String::trim)
@@ -267,12 +194,8 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
     }
 
     private void saveStore() {
-        if (dataFile == null) {
-            return;
-        }
-
+        if (dataFile == null) return;
         getDataFolder().mkdirs();
-
         try (var writer = new PrintWriter(new FileWriter(dataFile))) {
             store.all().stream()
                 .sorted(Comparator.comparing(UUID::toString))
