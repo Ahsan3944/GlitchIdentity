@@ -24,6 +24,13 @@ class GlitchCoreTest {
     }
 
     @Test
+    void generatedFramesNeverContainFormattingControlCharacters() {
+        for (int i = 0; i < 1000; i++) {
+            assertFalse(GlitchFrameGenerator.next().text().contains("§"));
+        }
+    }
+
+    @Test
     void generatedFramesUseTheConfiguredCharacterPool() {
         String sample = GlitchFrameGenerator.next().text();
         String allowed =
@@ -39,7 +46,7 @@ class GlitchCoreTest {
             "∂∇√∞∑∏∫∮∴∵≈≠≤≥±×÷∩∪∧∨⊕⊗⊙⊥" +
             "⩓⩠⪔⪕⪖⪗⪙⪚⪛⪜⪝" +
             "ⅧⅨⅩⅪⅫↂↈ∳∲" +
-            "§¶†‡•°※⁂★☆✦✧✶✪❖✸✻" +
+            "¶†‡•°※⁂★☆✦✧✶✪❖✸✻" +
             "◆◇◈●○■□▲△▼▽" +
             "─│┌┐└┘├┤┬┴┼═║╔╗╚╝╠╣╦╩╬▀▄█░▒▓";
 
