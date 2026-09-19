@@ -11,6 +11,7 @@ import net.minecraft.util.Identifier;
 
 public record GlitchPayload(
     Text message,
+    String messageKey,
     int victimEntityId,
     boolean glitchVictim,
     boolean glitchKiller
@@ -23,6 +24,7 @@ public record GlitchPayload(
     public static final PacketCodec<RegistryByteBuf, GlitchPayload> CODEC =
         PacketCodec.tuple(
             TextCodecs.REGISTRY_PACKET_CODEC, GlitchPayload::message,
+            PacketCodecs.STRING, GlitchPayload::messageKey,
             PacketCodecs.VAR_INT, GlitchPayload::victimEntityId,
             PacketCodecs.BOOLEAN, GlitchPayload::glitchVictim,
             PacketCodecs.BOOLEAN, GlitchPayload::glitchKiller,
