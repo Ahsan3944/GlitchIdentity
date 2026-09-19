@@ -75,7 +75,7 @@ public final class AnimatedGlitchText implements Text {
     }
 
     private void appendRoot(List<OrderedText> parts, Text text) {
-        String full = text.getString();
+        String full = rootContentString(text);
         int cursor = 0;
 
         while (cursor < full.length()) {
@@ -120,6 +120,15 @@ public final class AnimatedGlitchText implements Text {
                     : GlitchTextSanitizer.KILLER_MARKER.length()
             );
         }
+    }
+
+    private static String rootContentString(Text text) {
+        StringBuilder value = new StringBuilder();
+        text.getContent().visit(part -> {
+            value.append(part);
+            return Optional.empty();
+        });
+        return value.toString();
     }
 
     private static boolean containsMarker(String value) {
