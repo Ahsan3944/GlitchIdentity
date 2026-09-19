@@ -1,5 +1,6 @@
 package in.ultraop.glitchidentity.fabric;
 
+import in.ultraop.glitchidentity.core.GlitchColorMode;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.text.Text;
@@ -24,19 +25,33 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
         String value = message.getString();
 
         boolean glitchVictim =
-            value.contains(GlitchTextSanitizer.VICTIM_MARKER);
+            value.contains(GlitchTextSanitizer.VICTIM_MARKER)
+                || value.contains(GlitchTextSanitizer.VICTIM_WHITE_MARKER);
 
         boolean glitchKiller =
-            value.contains(GlitchTextSanitizer.KILLER_MARKER);
+            value.contains(GlitchTextSanitizer.KILLER_MARKER)
+                || value.contains(GlitchTextSanitizer.KILLER_WHITE_MARKER);
 
         if (!glitchVictim && !glitchKiller) {
             return null;
         }
 
+        GlitchColorMode victimMode =
+            value.contains(GlitchTextSanitizer.VICTIM_WHITE_MARKER)
+                ? GlitchColorMode.WHITE
+                : GlitchColorMode.COLORFUL;
+
+        GlitchColorMode killerMode =
+            value.contains(GlitchTextSanitizer.KILLER_WHITE_MARKER)
+                ? GlitchColorMode.WHITE
+                : GlitchColorMode.COLORFUL;
+
         return AnimatedGlitchText.death(
             message,
             glitchVictim,
-            glitchKiller
+            glitchKiller,
+            victimMode,
+            killerMode
         );
     }
 }
