@@ -48,11 +48,13 @@ public abstract class ServerPlayerEntityMixin {
             return;
         }
 
+        Text staticMessage = GlitchTextSanitizer.staticize(safeMessage);
+
         playerManager.broadcast(
             message,
             recipient -> ServerPlayNetworking.canSend(recipient, GlitchPayload.ID)
                 ? safeMessage
-                : message,
+                : staticMessage,
             overlay
         );
     }
