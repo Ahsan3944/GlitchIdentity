@@ -56,6 +56,7 @@ public final class GlitchIdentityFabric implements ModInitializer {
 
     @Override
     public void onInitialize() {
+        GlitchPayload.register();
         FabricConfig.load(STORE);
 
         CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) ->
