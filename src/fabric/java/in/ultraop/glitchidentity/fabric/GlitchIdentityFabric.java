@@ -201,9 +201,7 @@ public final class GlitchIdentityFabric implements ModInitializer {
                                     ServerPlayerEntity online = server.getPlayerManager().getPlayer(id);
                                     if (online != null) return online.getName().getString();
 
-                                    return server.getUserCache().getByUuid(id)
-                                        .map(entry -> entry.name())
-                                        .orElse(id.toString());
+                                    return id.toString();
                                 })
                                 .sorted(String.CASE_INSENSITIVE_ORDER)
                                 .toList();
