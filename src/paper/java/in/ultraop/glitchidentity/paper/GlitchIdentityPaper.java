@@ -58,6 +58,10 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
             return;
         }
 
+        if (!event.getShowDeathMessages()) {
+            return;
+        }
+
         Component message = event.deathMessage();
         if (message == null) {
             return;
