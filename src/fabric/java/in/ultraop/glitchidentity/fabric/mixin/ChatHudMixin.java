@@ -18,7 +18,7 @@ public abstract class ChatHudMixin {
         at = @At("HEAD"),
         cancellable = true
     )
-    private void glitchidentity$replaceSimpleDeathMessage(
+    private void glitchidentity$replaceSimpleMessage(
         Text message,
         CallbackInfo ci
     ) {
@@ -30,7 +30,7 @@ public abstract class ChatHudMixin {
         at = @At("HEAD"),
         cancellable = true
     )
-    private void glitchidentity$replaceSignedDeathMessage(
+    private void glitchidentity$replaceSignedMessage(
         Text message,
         MessageSignatureData signatureData,
         MessageIndicator indicator,
@@ -44,7 +44,9 @@ public abstract class ChatHudMixin {
             return;
         }
 
-        Text replacement = GlitchIdentityFabricClient.consumeDeathMessage(message);
+        Text replacement =
+            GlitchIdentityFabricClient.replaceSanitizedDeathMessage(message);
+
         if (replacement == null) {
             return;
         }
