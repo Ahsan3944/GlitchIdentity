@@ -1,5 +1,6 @@
 package in.ultraop.glitchidentity.fabric;
 
+import in.ultraop.glitchidentity.core.GlitchColorMode;
 import in.ultraop.glitchidentity.core.GlitchFrameGenerator;
 import net.minecraft.text.OrderedText;
 import net.minecraft.text.PlainTextContent;
@@ -14,17 +15,51 @@ public final class AnimatedGlitchText implements Text {
     private final Text template;
     private final boolean glitchVictim;
     private final boolean glitchKiller;
-    private final GlitchSegment victimGlitch = new GlitchSegment();
-    private final GlitchSegment killerGlitch = new GlitchSegment();
+    private final GlitchSegment victimGlitch;
+    private final GlitchSegment killerGlitch;
 
-    private AnimatedGlitchText(Text template, boolean glitchVictim, boolean glitchKiller) {
+    private AnimatedGlitchText(
+        Text template,
+        boolean glitchVictim,
+        boolean glitchKiller,
+        GlitchColorMode victimMode,
+        GlitchColorMode killerMode
+    ) {
         this.template = template;
         this.glitchVictim = glitchVictim;
         this.glitchKiller = glitchKiller;
+        this.victimGlitch = new GlitchSegment(victimMode);
+        this.killerGlitch = new GlitchSegment(killerMode);
     }
 
-    public static AnimatedGlitchText death(Text template, boolean glitchVictim, boolean glitchKiller) {
-        return new AnimatedGlitchText(template, glitchVictim, glitchKiller);
+    public static AnimatedGlitchText death(
+        Text template,
+        boolean glitchVictim,
+        boolean glitchKiller
+    ) {
+        return death(
+            template,
+            glitchVictim,
+            glitchKiller,
+            GlitchColorMode.COLORFUL,
+            GlitchColorMode.COLORFUL
+        );
+    }
+
+    public static AnimatedGlitchText death(
+        Text template,
+        boolean glitchVictim,
+        boolean glitchKiller,
+        GlitchColorMode victimMode,
+        GlitchColorMode killerMode
+    ) {
+        return new AnimatedGlitchText(
+            template,
+            glitchVictim,
+            glitchKiller,
+            victimMode,
+            killerMode
+        );
     }
 
     @Override
@@ -65,8 +100,14 @@ public final class AnimatedGlitchText implements Text {
             if (containsMarker(sibling.getString())) {
                 parts.add(AnimatedGlitchText.death(
                     sibling,
-                    sibling.getString().contains(GlitchTextSanitizer.VICTIM_MARKER),
-                    sibling.getString().contains(GlitchTextSanitizer.KILLER_MARKER)
+                    containsVictimMarker(sibling.getString()),
+                    containsKillerMarker(sibling.getString()),
+                    containsWhiteVictimMarker(sibling.getString())
+                        ? GlitchColorMode.WHITE
+                        : GlitchColorMode.COLORFUL,
+                    containsWhiteKillerMarker(sibling.getString())
+                        ? GlitchColorMode.WHITE
+                        : GlitchColorMode.COLORFUL
                 ).asOrderedText());
             } else {
                 parts.add(sibling.asOrderedText());
@@ -79,8 +120,8 @@ public final class AnimatedGlitchText implements Text {
         int cursor = 0;
 
         while (cursor < full.length()) {
-            int victimAt = glitchVictim ? full.indexOf(GlitchTextSanitizer.VICTIM_MARKER, cursor) : -1;
-            int killerAt = glitchKiller ? full.indexOf(GlitchTextSanitizer.KILLER_MARKER, cursor) : -1;
+            int victimAt = glitchVictim ? indexOfVictimMarker(full, cursor) : -1;
+            int killerAt = glitchKiller ? indexOfKillerMarker(full, cursor) : -1;
 
             int markerAt;
             GlitchSegment segment;
@@ -114,11 +155,7 @@ public final class AnimatedGlitchText implements Text {
 
             parts.add(segment.asOrderedText(text.getStyle()));
 
-            cursor = markerAt + (
-                segment == victimGlitch
-                    ? GlitchTextSanitizer.VICTIM_MARKER.length()
-                    : GlitchTextSanitizer.KILLER_MARKER.length()
-            );
+            cursor = markerAt + GlitchTextSanitizer.VICTIM_MARKER.length();
         }
     }
 
@@ -132,8 +169,43 @@ public final class AnimatedGlitchText implements Text {
     }
 
     private static boolean containsMarker(String value) {
+        return containsVictimMarker(value) || containsKillerMarker(value);
+    }
+
+    private static boolean containsVictimMarker(String value) {
         return value.contains(GlitchTextSanitizer.VICTIM_MARKER)
-            || value.contains(GlitchTextSanitizer.KILLER_MARKER);
+            || value.contains(GlitchTextSanitizer.VICTIM_WHITE_MARKER);
+    }
+
+    private static boolean containsKillerMarker(String value) {
+        return value.contains(GlitchTextSanitizer.KILLER_MARKER)
+            || value.contains(GlitchTextSanitizer.KILLER_WHITE_MARKER);
+    }
+
+    private static boolean containsWhiteVictimMarker(String value) {
+        return value.contains(GlitchTextSanitizer.VICTIM_WHITE_MARKER);
+    }
+
+    private static boolean containsWhiteKillerMarker(String value) {
+        return value.contains(GlitchTextSanitizer.KILLER_WHITE_MARKER);
+    }
+
+    private static int indexOfVictimMarker(String value, int cursor) {
+        int colorfulAt = value.indexOf(GlitchTextSanitizer.VICTIM_MARKER, cursor);
+        int whiteAt = value.indexOf(GlitchTextSanitizer.VICTIM_WHITE_MARKER, cursor);
+
+        if (colorfulAt < 0) return whiteAt;
+        if (whiteAt < 0) return colorfulAt;
+        return Math.min(colorfulAt, whiteAt);
+    }
+
+    private static int indexOfKillerMarker(String value, int cursor) {
+        int colorfulAt = value.indexOf(GlitchTextSanitizer.KILLER_MARKER, cursor);
+        int whiteAt = value.indexOf(GlitchTextSanitizer.KILLER_WHITE_MARKER, cursor);
+
+        if (colorfulAt < 0) return whiteAt;
+        if (whiteAt < 0) return colorfulAt;
+        return Math.min(colorfulAt, whiteAt);
     }
 
     private String renderString(String value) {
@@ -143,20 +215,35 @@ public final class AnimatedGlitchText implements Text {
                 glitchVictim ? victimGlitch.snapshot().text() : ""
             )
             .replace(
+                GlitchTextSanitizer.VICTIM_WHITE_MARKER,
+                glitchVictim ? victimGlitch.snapshot().text() : ""
+            )
+            .replace(
                 GlitchTextSanitizer.KILLER_MARKER,
+                glitchKiller ? killerGlitch.snapshot().text() : ""
+            )
+            .replace(
+                GlitchTextSanitizer.KILLER_WHITE_MARKER,
                 glitchKiller ? killerGlitch.snapshot().text() : ""
             );
     }
 
     private static final class GlitchSegment {
         private static final long FRAME_HOLD_NANOS = 30_000_000L;
-        private GlitchFrameGenerator.Frame frame = GlitchFrameGenerator.next();
-        private long frameAt = System.nanoTime();
+        private final GlitchColorMode mode;
+        private GlitchFrameGenerator.Frame frame;
+        private long frameAt;
+
+        private GlitchSegment(GlitchColorMode mode) {
+            this.mode = mode == null ? GlitchColorMode.COLORFUL : mode;
+            this.frame = GlitchFrameGenerator.next(this.mode);
+            this.frameAt = System.nanoTime();
+        }
 
         private synchronized GlitchFrameGenerator.Frame snapshot() {
             long now = System.nanoTime();
             if (now - frameAt >= FRAME_HOLD_NANOS) {
-                frame = GlitchFrameGenerator.next();
+                frame = GlitchFrameGenerator.next(mode);
                 frameAt = now;
             }
             return frame;
