@@ -35,6 +35,7 @@ GlitchIdentity is a cross-platform Minecraft 1.21.11 system that hides configure
 All commands are OP-only:
 - /glitch add <player>
 - /glitch remove <player>
+- Fabric accepts an online player name or UUID; Paper accepts an online/cached player name or UUID.
 - /glitch list
 - /glitch reload
 - /glitch help
@@ -124,6 +125,8 @@ Unit:
 Fabric:
 - ordinary kill
 - configured killer / ordinary victim
+- configured player with a custom display name/team prefix
+- configured player referenced by username and display name
 - ordinary killer / configured victim
 - both configured
 - victim death packet
