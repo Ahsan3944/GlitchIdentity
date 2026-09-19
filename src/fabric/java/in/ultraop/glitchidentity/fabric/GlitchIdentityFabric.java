@@ -26,7 +26,10 @@ public final class GlitchIdentityFabric implements ModInitializer {
             killer = victim.getEntityWorld().getServer().getPlayerManager().getPlayerList().stream()
                 .filter(player -> !player.getUuid().equals(victim.getUuid()))
                 .filter(player -> STORE.contains(player.getUuid()))
-                .filter(player -> deathLine.contains(player.getName().getString()))
+                .filter(player ->
+                    deathLine.contains(player.getName().getString())
+                        || deathLine.contains(player.getDisplayName().getString())
+                )
                 .findFirst()
                 .orElse(null);
         }
