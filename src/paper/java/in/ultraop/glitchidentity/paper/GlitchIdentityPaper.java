@@ -11,6 +11,9 @@ import org.bukkit.command.*;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRegisterChannelEvent;
+import org.bukkit.event.player.PlayerUnregisterChannelEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -19,8 +22,10 @@ import java.util.*;
 
 public final class GlitchIdentityPaper extends JavaPlugin implements Listener, CommandExecutor, TabCompleter {
     private static final String ADMIN_PERMISSION = "glitchidentity.admin";
+    private static final String GLITCH_CHANNEL = "glitchidentity:glitch";
 
     private final GlitchStore store = new GlitchStore();
+    private final Set<UUID> animatedClients = new HashSet<>();
     private File dataFile;
 
     @Override
@@ -29,10 +34,11 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
         loadStore();
 
         getServer().getPluginManager().registerEvents(this, this);
+        getServer().getMessenger().registerOutgoingPluginChannel(this, GLITCH_CHANNEL);
         Objects.requireNonNull(getCommand("glitch")).setExecutor(this);
         Objects.requireNonNull(getCommand("glitch")).setTabCompleter(this);
 
-        getLogger().info("GlitchIdentity enabled. Paper fallback uses a static corrupted identity for vanilla clients.");
+        getLogger().info("GlitchIdentity enabled. Paper supports animated Fabric clients and static fallback for vanilla clients.");
     }
 
     @Override
@@ -57,15 +63,53 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
             return;
         }
 
-        if (glitchVictim) {
-            message = replaceLiteralWithGlitch(message, victim.getName());
+        Component animatedMessage = replaceWithMarker(
+            message,
+            glitchVictim ? victim.getName() : null,
+            glitchKiller ? (killer != null ? killer.getName() : null) : null
+        );
+        Component staticMessage = replaceLiteralWithGlitch(
+            animatedMessage,
+            GlitchIdentityMarkers.VICTIM_MARKER
+        );
+        staticMessage = replaceLiteralWithGlitch(
+            staticMessage,
+            GlitchIdentityMarkers.KILLER_MARKER
+        );
+
+        event.setShowDeathMessages(false);
+
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            player.sendMessage(
+                animatedClients.contains(player.getUniqueId())
+                    ? animatedMessage
+                    : staticMessage
+            );
+        }
+    }
+
+    private Component replaceWithMarker(
+        Component message,
+        String victimName,
+        String killerName
+    ) {
+        Component result = message;
+
+        if (victimName != null) {
+            result = result.replaceText(builder ->
+                builder.matchLiteral(victimName)
+                    .replacement(Component.text(GlitchIdentityMarkers.VICTIM_MARKER))
+            );
         }
 
-        if (glitchKiller) {
-            message = replaceLiteralWithGlitch(message, killer.getName());
+        if (killerName != null) {
+            result = result.replaceText(builder ->
+                builder.matchLiteral(killerName)
+                    .replacement(Component.text(GlitchIdentityMarkers.KILLER_MARKER))
+            );
         }
 
-        event.deathMessage(message);
+        return result;
     }
 
     private Component replaceLiteralWithGlitch(Component message, String name) {
@@ -84,6 +128,25 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
         return message.replaceText(builder ->
             builder.matchLiteral(name).replacement(replacement)
         );
+    }
+
+    @EventHandler
+    public void onPlayerRegisterChannel(PlayerRegisterChannelEvent event) {
+        if (GLITCH_CHANNEL.equals(event.getChannel())) {
+            animatedClients.add(event.getPlayer().getUniqueId());
+        }
+    }
+
+    @EventHandler
+    public void onPlayerUnregisterChannel(PlayerUnregisterChannelEvent event) {
+        if (GLITCH_CHANNEL.equals(event.getChannel())) {
+            animatedClients.remove(event.getPlayer().getUniqueId());
+        }
+    }
+
+    @EventHandler
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        animatedClients.remove(event.getPlayer().getUniqueId());
     }
 
     @Override
