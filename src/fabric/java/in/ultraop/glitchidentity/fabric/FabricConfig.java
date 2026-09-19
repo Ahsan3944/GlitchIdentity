@@ -34,7 +34,7 @@ public final class FabricConfig {
                 try {
                     store.add(UUID.fromString(value));
                 } catch (IllegalArgumentException ignored) {
-                    // Keep valid entries and ignore malformed lines.
+                    System.err.println("[GlitchIdentity] Ignoring malformed UUID in " + FILE + ": " + value);
                 }
             }
         } catch (IOException e) {
