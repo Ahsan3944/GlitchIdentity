@@ -215,11 +215,33 @@ public final class GlitchTextSanitizer {
                 result.append(Text.literal(value.substring(cursor, markerAt)).setStyle(style));
             }
 
-            result.append(staticGlitchText(style));
-            cursor = markerAt + GlitchTextSanitizer.VICTIM_MARKER.length();
+            GlitchColorMode mode = markerModeAt(value, markerAt);
+            result.append(staticGlitchText(style, mode));
+            cursor = markerAt + markerLengthAt(value, markerAt);
         }
 
         return result;
+    }
+
+    private static GlitchColorMode markerModeAt(String value, int markerAt) {
+        if (value.startsWith(VICTIM_WHITE_MARKER, markerAt)
+            || value.startsWith(KILLER_WHITE_MARKER, markerAt)) {
+            return GlitchColorMode.WHITE;
+        }
+        return GlitchColorMode.COLORFUL;
+    }
+
+    private static int markerLengthAt(String value, int markerAt) {
+        if (value.startsWith(VICTIM_WHITE_MARKER, markerAt)) {
+            return VICTIM_WHITE_MARKER.length();
+        }
+        if (value.startsWith(KILLER_WHITE_MARKER, markerAt)) {
+            return KILLER_WHITE_MARKER.length();
+        }
+        if (value.startsWith(KILLER_MARKER, markerAt)) {
+            return KILLER_MARKER.length();
+        }
+        return VICTIM_MARKER.length();
     }
 
     private static Object staticizeArgument(Object argument) {
@@ -236,8 +258,12 @@ public final class GlitchTextSanitizer {
         return argument;
     }
 
-    private static Text staticGlitchText(net.minecraft.text.Style style) {
-        GlitchFrameGenerator.Frame frame = GlitchFrameGenerator.next();
+    private static Text staticGlitchText(
+        net.minecraft.text.Style style,
+        GlitchColorMode mode
+    ) {
+        GlitchFrameGenerator.Frame frame = GlitchFrameGenerator.next(mode);
+
         MutableText result = Text.empty().setStyle(style);
         int[] codePoints = frame.text().codePoints().toArray();
 
