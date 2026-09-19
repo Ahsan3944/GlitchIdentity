@@ -1,25 +1,20 @@
 package in.ultraop.glitchidentity.fabric;
 
-import in.ultraop.glitchidentity.core.GlitchMessageKey;
-import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.Ownable;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.server.world.ServerWorld;
 import net.minecraft.text.Text;
 
 public final class FabricNetwork {
     private FabricNetwork() {}
 
-    public static void sendGlitch(
-        ServerWorld world,
+    public static Text createSafeDeathMessage(
         ServerPlayerEntity victim,
         ServerPlayerEntity killer,
         boolean glitchVictim,
         boolean glitchKiller
     ) {
-        // Use the same DamageTracker message that vanilla uses for the death line.
         Text deathMessage = victim.getDamageTracker().getDeathMessage();
 
         String victimName = glitchVictim
@@ -30,25 +25,11 @@ public final class FabricNetwork {
             ? killer.getDisplayName().getString()
             : "\u0000never-killer\u0000";
 
-        Text safeMessage = GlitchTextSanitizer.sanitize(
+        return GlitchTextSanitizer.sanitize(
             deathMessage,
             victimName,
             killerName
         );
-
-        GlitchPayload payload = new GlitchPayload(
-            safeMessage,
-            GlitchMessageKey.of(deathMessage.getString()),
-            victim.getId(),
-            glitchVictim,
-            glitchKiller
-        );
-
-        for (ServerPlayerEntity player : world.getServer().getPlayerManager().getPlayerList()) {
-            if (ServerPlayNetworking.canSend(player, GlitchPayload.ID)) {
-                ServerPlayNetworking.send(player, payload);
-            }
-        }
     }
 
     public static ServerPlayerEntity resolvePlayerAttacker(DamageSource damageSource) {
