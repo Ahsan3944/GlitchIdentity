@@ -144,7 +144,7 @@ public final class GlitchIdentityFabric implements ModInitializer {
                             .then(CommandManager.literal("colorful")
                                 .executes(ctx -> addCommand(ctx, GlitchColorMode.COLORFUL)))
                             .then(CommandManager.literal("white")
-                                .executes(ctx -> addCommand(ctx, GlitchColorMode.WHITE))))
+                                .executes(ctx -> addCommand(ctx, GlitchColorMode.WHITE)))))
                     .then(CommandManager.literal("remove")
                         .then(CommandManager.argument("player", StringArgumentType.word())
                             .suggests((context, builder) -> suggestTargets(context, builder, false))
