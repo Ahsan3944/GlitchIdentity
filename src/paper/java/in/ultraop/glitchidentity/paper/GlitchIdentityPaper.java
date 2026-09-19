@@ -95,7 +95,7 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!sender.isOp()) {
+        if (!sender.hasPermission("glitchidentity.admin")) {
             sender.sendMessage("§cYou must be OP to use GlitchIdentity.");
             return true;
         }
@@ -111,7 +111,15 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                     return true;
                 }
                 Player player = Bukkit.getPlayerExact(args[1]);
-                OfflinePlayer offlinePlayer = player != null ? player : Bukkit.getOfflinePlayer(args[1]);
+                OfflinePlayer offlinePlayer = player != null
+                    ? player
+                    : resolveOfflinePlayerWithoutNetwork(args[1]);
+
+                if (offlinePlayer == null) {
+                    sender.sendMessage("§cPlayer is not online or cached. Use the player's UUID or have them join the server first.");
+                    return true;
+                }
+
                 if (store.add(offlinePlayer.getUniqueId())) {
                     saveStore();
                     sender.sendMessage("§aGlitch enabled for " + args[1]);
@@ -172,6 +180,14 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                 .toList();
         }
         return List.of();
+    }
+
+    private OfflinePlayer resolveOfflinePlayerWithoutNetwork(String input) {
+        try {
+            return Bukkit.getOfflinePlayer(UUID.fromString(input));
+        } catch (IllegalArgumentException ignored) {
+            return Bukkit.getOfflinePlayerIfCached(input);
+        }
     }
 
     private void loadStore() {
