@@ -2,6 +2,7 @@ package in.ultraop.glitchidentity.fabric.mixin;
 
 import in.ultraop.glitchidentity.fabric.GlitchIdentityFabric;
 import in.ultraop.glitchidentity.fabric.GlitchPayload;
+import in.ultraop.glitchidentity.fabric.GlitchTextSanitizer;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.entity.damage.DamageSource;
 import net.minecraft.server.PlayerManager;
