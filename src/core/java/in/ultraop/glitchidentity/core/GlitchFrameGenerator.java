@@ -39,11 +39,19 @@ public final class GlitchFrameGenerator {
     private GlitchFrameGenerator() {}
 
     /**
-     * Creates a fresh 5-7 character identity every frame.
+     * Creates a fresh 5-7 character colorful identity every frame.
      * Characters and colors are independently randomized.
      * Consecutive identical frames are rejected to prevent visible repetition.
      */
     public static synchronized Frame next() {
+        return next(GlitchColorMode.COLORFUL);
+    }
+
+    /**
+     * Creates a fresh 5-7 character identity every frame using the selected color mode.
+     * COLORFUL preserves the existing randomized colors; WHITE uses pure white for every character.
+     */
+    public static synchronized Frame next(GlitchColorMode mode) {
         var random = ThreadLocalRandom.current();
 
         for (int attempt = 0; attempt < 12; attempt++) {
@@ -60,7 +68,9 @@ public final class GlitchFrameGenerator {
 
                 previousCodePoint = codePoint;
                 text.appendCodePoint(codePoint);
-                colors[i] = COLORS[random.nextInt(COLORS.length)];
+                colors[i] = mode == GlitchColorMode.WHITE
+                    ? 0xFFFFFF
+                    : COLORS[random.nextInt(COLORS.length)];
             }
 
             String value = text.toString();
@@ -77,7 +87,9 @@ public final class GlitchFrameGenerator {
         for (int i = 0; i < length; i++) {
             int codePoint = POOL[random.nextInt(POOL.length)];
             text.appendCodePoint(codePoint);
-            colors[i] = COLORS[random.nextInt(COLORS.length)];
+            colors[i] = mode == GlitchColorMode.WHITE
+                ? 0xFFFFFF
+                : COLORS[random.nextInt(COLORS.length)];
         }
         lastFrame = text.toString();
         return new Frame(lastFrame, colors);
