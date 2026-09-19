@@ -1,5 +1,6 @@
 package in.ultraop.glitchidentity.fabric;
 
+import in.ultraop.glitchidentity.core.GlitchColorMode;
 import in.ultraop.glitchidentity.core.GlitchFrameGenerator;
 import net.minecraft.text.MutableText;
 import net.minecraft.text.PlainTextContent;
@@ -13,22 +14,52 @@ import java.util.Objects;
 public final class GlitchTextSanitizer {
     public static final String VICTIM_MARKER = "\uE000GIV\uE001";
     public static final String KILLER_MARKER = "\uE000GIK\uE001";
+    public static final String VICTIM_WHITE_MARKER = "\uE000WIV\uE001";
+    public static final String KILLER_WHITE_MARKER = "\uE000WIK\uE001";
 
     private GlitchTextSanitizer() {}
 
     public static Text sanitize(Text source, String victimName, String killerName) {
-        return sanitizeText(source, victimName, killerName);
+        return sanitize(
+            source,
+            victimName,
+            killerName,
+            GlitchColorMode.COLORFUL,
+            GlitchColorMode.COLORFUL
+        );
     }
 
-    private static Text sanitizeText(Text source, String victimName, String killerName) {
+    public static Text sanitize(
+        Text source,
+        String victimName,
+        String killerName,
+        GlitchColorMode victimMode,
+        GlitchColorMode killerMode
+    ) {
+        return sanitizeText(
+            source,
+            victimName,
+            killerName,
+            victimMode,
+            killerMode
+        );
+    }
+
+    private static Text sanitizeText(
+        Text source,
+        String victimName,
+        String killerName,
+        GlitchColorMode victimMode,
+        GlitchColorMode killerMode
+    ) {
         String rendered = source.getString();
 
         if (Objects.equals(rendered, victimName)) {
-            return Text.literal(VICTIM_MARKER).setStyle(source.getStyle());
+            return Text.literal(markerForVictim(victimMode)).setStyle(source.getStyle());
         }
 
         if (Objects.equals(rendered, killerName)) {
-            return Text.literal(KILLER_MARKER).setStyle(source.getStyle());
+            return Text.literal(markerForKiller(killerMode)).setStyle(source.getStyle());
         }
 
         TextContent content = source.getContent();
@@ -36,7 +67,13 @@ public final class GlitchTextSanitizer {
 
         if (content instanceof TranslatableTextContent translated) {
             Object[] args = Arrays.stream(translated.getArgs())
-                .map(arg -> sanitizeArgument(arg, victimName, killerName))
+                .map(arg -> sanitizeArgument(
+                    arg,
+                    victimName,
+                    killerName,
+                    victimMode,
+                    killerMode
+                ))
                 .toArray();
 
             result = Text.translatableWithFallback(
@@ -49,6 +86,8 @@ public final class GlitchTextSanitizer {
                 plain.string(),
                 victimName,
                 killerName,
+                victimMode,
+                killerMode,
                 source.getStyle()
             );
         } else {
@@ -58,7 +97,13 @@ public final class GlitchTextSanitizer {
         result.setStyle(source.getStyle());
 
         for (Text sibling : source.getSiblings()) {
-            result.append(sanitizeText(sibling, victimName, killerName));
+            result.append(sanitizeText(
+                sibling,
+                victimName,
+                killerName,
+                victimMode,
+                killerMode
+            ));
         }
 
         return result;
@@ -68,6 +113,8 @@ public final class GlitchTextSanitizer {
         String value,
         String victimName,
         String killerName,
+        GlitchColorMode victimMode,
+        GlitchColorMode killerMode,
         net.minecraft.text.Style style
     ) {
         if (value.isEmpty()) {
@@ -75,27 +122,32 @@ public final class GlitchTextSanitizer {
         }
 
         MutableText result = Text.empty();
-
         int cursor = 0;
+
         while (cursor < value.length()) {
             int victimAt = value.indexOf(victimName, cursor);
             int killerAt = value.indexOf(killerName, cursor);
 
             int matchAt;
             String replacement;
+            int matchedNameLength;
 
             if (victimAt < 0) {
                 matchAt = killerAt;
-                replacement = KILLER_MARKER;
+                replacement = markerForKiller(killerMode);
+                matchedNameLength = killerName.length();
             } else if (killerAt < 0) {
                 matchAt = victimAt;
-                replacement = VICTIM_MARKER;
+                replacement = markerForVictim(victimMode);
+                matchedNameLength = victimName.length();
             } else if (victimAt <= killerAt) {
                 matchAt = victimAt;
-                replacement = VICTIM_MARKER;
+                replacement = markerForVictim(victimMode);
+                matchedNameLength = victimName.length();
             } else {
                 matchAt = killerAt;
-                replacement = KILLER_MARKER;
+                replacement = markerForKiller(killerMode);
+                matchedNameLength = killerName.length();
             }
 
             if (matchAt < 0) {
@@ -108,9 +160,7 @@ public final class GlitchTextSanitizer {
             }
 
             result.append(Text.literal(replacement).setStyle(style));
-            cursor = matchAt + replacementNameLength(
-                replacement.equals(VICTIM_MARKER) ? victimName : killerName
-            );
+            cursor = matchAt + matchedNameLength;
         }
 
         return result;
@@ -154,25 +204,7 @@ public final class GlitchTextSanitizer {
         int cursor = 0;
 
         while (cursor < value.length()) {
-            int victimAt = value.indexOf(VICTIM_MARKER, cursor);
-            int killerAt = value.indexOf(KILLER_MARKER, cursor);
-
-            int markerAt;
-            String marker;
-
-            if (victimAt < 0) {
-                markerAt = killerAt;
-                marker = KILLER_MARKER;
-            } else if (killerAt < 0) {
-                markerAt = victimAt;
-                marker = VICTIM_MARKER;
-            } else if (victimAt <= killerAt) {
-                markerAt = victimAt;
-                marker = VICTIM_MARKER;
-            } else {
-                markerAt = killerAt;
-                marker = KILLER_MARKER;
-            }
+            int markerAt = indexOfAnyMarker(value, cursor);
 
             if (markerAt < 0) {
                 result.append(Text.literal(value.substring(cursor)).setStyle(style));
@@ -184,7 +216,7 @@ public final class GlitchTextSanitizer {
             }
 
             result.append(staticGlitchText(style));
-            cursor = markerAt + marker.length();
+            cursor = markerAt + GlitchTextSanitizer.VICTIM_MARKER.length();
         }
 
         return result;
@@ -196,7 +228,7 @@ public final class GlitchTextSanitizer {
         }
 
         if (argument instanceof String string) {
-            if (string.contains(VICTIM_MARKER) || string.contains(KILLER_MARKER)) {
+            if (containsAnyMarker(string)) {
                 return staticizeLiteral(string, net.minecraft.text.Style.EMPTY);
             }
         }
@@ -219,29 +251,67 @@ public final class GlitchTextSanitizer {
         return result;
     }
 
-    private static int replacementNameLength(String name) {
-        return name.length();
-    }
-
     private static Object sanitizeArgument(
         Object argument,
         String victimName,
-        String killerName
+        String killerName,
+        GlitchColorMode victimMode,
+        GlitchColorMode killerMode
     ) {
         if (argument instanceof Text text) {
-            return sanitizeText(text, victimName, killerName);
+            return sanitizeText(
+                text,
+                victimName,
+                killerName,
+                victimMode,
+                killerMode
+            );
         }
 
         if (argument instanceof String string) {
             if (Objects.equals(string, victimName)) {
-                return VICTIM_MARKER;
+                return markerForVictim(victimMode);
             }
 
             if (Objects.equals(string, killerName)) {
-                return KILLER_MARKER;
+                return markerForKiller(killerMode);
             }
         }
 
         return argument;
+    }
+
+    private static String markerForVictim(GlitchColorMode mode) {
+        return mode == GlitchColorMode.WHITE
+            ? VICTIM_WHITE_MARKER
+            : VICTIM_MARKER;
+    }
+
+    private static String markerForKiller(GlitchColorMode mode) {
+        return mode == GlitchColorMode.WHITE
+            ? KILLER_WHITE_MARKER
+            : KILLER_MARKER;
+    }
+
+    private static boolean containsAnyMarker(String value) {
+        return value.contains(VICTIM_MARKER)
+            || value.contains(KILLER_MARKER)
+            || value.contains(VICTIM_WHITE_MARKER)
+            || value.contains(KILLER_WHITE_MARKER);
+    }
+
+    private static int indexOfAnyMarker(String value, int cursor) {
+        int victimAt = value.indexOf(VICTIM_MARKER, cursor);
+        int killerAt = value.indexOf(KILLER_MARKER, cursor);
+        int victimWhiteAt = value.indexOf(VICTIM_WHITE_MARKER, cursor);
+        int killerWhiteAt = value.indexOf(KILLER_WHITE_MARKER, cursor);
+
+        int result = Integer.MAX_VALUE;
+        if (victimAt >= 0) result = Math.min(result, victimAt);
+        if (killerAt >= 0) result = Math.min(result, killerAt);
+        if (victimWhiteAt >= 0) result = Math.min(result, victimWhiteAt);
+        if (killerWhiteAt >= 0) result = Math.min(result, killerWhiteAt);
+
+        return result == Integer.MAX_VALUE ? -1 : result;
     }
 }
