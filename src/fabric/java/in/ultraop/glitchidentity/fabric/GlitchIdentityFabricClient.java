@@ -1,5 +1,6 @@
 package in.ultraop.glitchidentity.fabric;
 
+import in.ultraop.glitchidentity.core.GlitchMessageKey;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.text.Text;
@@ -20,27 +21,22 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
             purgeExpired();
 
             if (incoming.glitchVictim() || incoming.glitchKiller()) {
-                PENDING_DEATHS.addLast(new PendingPayload(incoming, System.nanoTime()));
+                PENDING_DEATHS.addLast(
+                    new PendingPayload(incoming, System.nanoTime())
+                );
             }
         });
     }
 
     public static Text consumeDeathMessage(Text original) {
-        return consumeDeathMessage(original, -1);
-    }
-
-    public static Text consumeDeathMessage(Text original, int victimEntityId) {
         purgeExpired();
 
-        String plain = original.getString();
+        String messageKey = GlitchMessageKey.of(original.getString());
 
         for (PendingPayload pending : PENDING_DEATHS) {
             GlitchPayload payload = pending.payload();
 
-            boolean idMatches = victimEntityId >= 0 && payload.victimEntityId() == victimEntityId;
-            boolean textMatches = stripMarkers(payload.message().getString()).equals(plain);
-
-            if (!idMatches && !textMatches) {
+            if (!payload.messageKey().equals(messageKey)) {
                 continue;
             }
 
@@ -68,12 +64,6 @@ public final class GlitchIdentityFabricClient implements ClientModInitializer {
             }
             PENDING_DEATHS.pollFirst();
         }
-    }
-
-    private static String stripMarkers(String value) {
-        return value
-            .replace(GlitchTextSanitizer.VICTIM_MARKER, "")
-            .replace(GlitchTextSanitizer.KILLER_MARKER, "");
     }
 
     private record PendingPayload(GlitchPayload payload, long receivedAtNanos) {}
