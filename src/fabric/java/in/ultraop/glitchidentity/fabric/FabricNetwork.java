@@ -17,32 +17,35 @@ public final class FabricNetwork {
     ) {
         Text deathMessage = victim.getDamageTracker().getDeathMessage();
 
-        String victimName = glitchVictim
-            ? victim.getDisplayName().getString()
-            : "\u0000never-victim\u0000";
+        Text sanitized = deathMessage;
 
-        String killerName = glitchKiller && killer != null
-            ? killer.getDisplayName().getString()
-            : "\u0000never-killer\u0000";
+        if (glitchVictim) {
+            sanitized = GlitchTextSanitizer.sanitize(
+                sanitized,
+                victim.getName().getString(),
+                "\u0000never-killer\u0000"
+            );
+            sanitized = GlitchTextSanitizer.sanitize(
+                sanitized,
+                victim.getDisplayName().getString(),
+                "\u0000never-killer-display\u0000"
+            );
+        }
 
-        Text sanitized = GlitchTextSanitizer.sanitize(
-            deathMessage,
-            victimName,
-            killerName
-        );
+        if (glitchKiller && killer != null) {
+            sanitized = GlitchTextSanitizer.sanitize(
+                sanitized,
+                "\u0000never-victim\u0000",
+                killer.getName().getString()
+            );
+            sanitized = GlitchTextSanitizer.sanitize(
+                sanitized,
+                "\u0000never-victim-display\u0000",
+                killer.getDisplayName().getString()
+            );
+        }
 
-        String victimDisplayName = glitchVictim
-            ? victim.getDisplayName().getString()
-            : "\u0000never-victim-display\u0000";
-        String killerDisplayName = glitchKiller && killer != null
-            ? killer.getDisplayName().getString()
-            : "\u0000never-killer-display\u0000";
-
-        return GlitchTextSanitizer.sanitize(
-            sanitized,
-            victimDisplayName,
-            killerDisplayName
-        );
+        return sanitized;
     }
 
     public static ServerPlayerEntity resolvePlayerAttacker(DamageSource damageSource) {
