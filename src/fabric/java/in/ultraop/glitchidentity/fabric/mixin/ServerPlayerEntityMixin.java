@@ -11,20 +11,32 @@ import net.minecraft.text.Text;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyArg;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ServerPlayerEntity.class)
 public abstract class ServerPlayerEntityMixin {
     @Inject(method = "onDeath", at = @At("HEAD"))
-    private void glitchidentity$prepareDeath(
-        DamageSource damageSource,
-        CallbackInfo ci
-    ) {
+    private void glitchidentity$prepareDeath(DamageSource damageSource, CallbackInfo ci) {
         GlitchIdentityFabric.prepareDeath(
             (ServerPlayerEntity) (Object) this,
             damageSource
         );
+    }
+
+    @ModifyArg(
+        method = "onDeath",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/network/packet/s2c/play/DeathMessageS2CPacket;<init>(ILnet/minecraft/text/Text;)V"
+        ),
+        index = 1
+    )
+    private Text glitchidentity$sanitizeDeathPacket(Text original) {
+        ServerPlayerEntity victim = (ServerPlayerEntity) (Object) this;
+        Text safe = GlitchIdentityFabric.peekDeathReplacement(victim.getUuid());
+        return safe != null ? safe : original;
     }
 
     @Redirect(
@@ -40,9 +52,7 @@ public abstract class ServerPlayerEntityMixin {
         boolean overlay
     ) {
         ServerPlayerEntity victim = (ServerPlayerEntity) (Object) this;
-        Text safeMessage = GlitchIdentityFabric.consumeDeathReplacement(
-            victim.getUuid()
-        );
+        Text safeMessage = GlitchIdentityFabric.consumeDeathReplacement(victim.getUuid());
 
         if (safeMessage == null) {
             playerManager.broadcast(message, overlay);
@@ -57,6 +67,13 @@ public abstract class ServerPlayerEntityMixin {
                 ? safeMessage
                 : staticMessage,
             overlay
+        );
+    }
+
+    @Inject(method = "onDeath", at = @At("RETURN"))
+    private void glitchidentity$clearPendingDeath(DamageSource damageSource, CallbackInfo ci) {
+        GlitchIdentityFabric.discardDeathReplacement(
+            ((ServerPlayerEntity) (Object) this).getUuid()
         );
     }
 }
