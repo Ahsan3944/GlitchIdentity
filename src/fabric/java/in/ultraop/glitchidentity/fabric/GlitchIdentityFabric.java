@@ -118,7 +118,6 @@ public final class GlitchIdentityFabric implements DedicatedServerModInitializer
                     victim.getEntityWorld(),
                     victim,
                     killer,
-                    damageSource,
                     glitchVictim,
                     glitchKiller
                 );
