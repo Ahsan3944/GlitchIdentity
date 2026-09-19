@@ -10,9 +10,38 @@ import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
 
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+
 public final class GlitchIdentityFabric implements DedicatedServerModInitializer {
     public static final String MOD_ID = "glitchidentity";
     public static final GlitchStore STORE = new GlitchStore();
+    private static final Map<UUID, Text> PENDING_DEATH_REPLACEMENTS = new ConcurrentHashMap<>();
+
+    public static void prepareDeath(ServerPlayerEntity victim, net.minecraft.entity.damage.DamageSource damageSource) {
+        ServerPlayerEntity killer = FabricNetwork.resolvePlayerAttacker(damageSource);
+
+        boolean glitchVictim = STORE.contains(victim.getUuid());
+        boolean glitchKiller = killer != null && STORE.contains(killer.getUuid());
+
+        if (!glitchVictim && !glitchKiller) {
+            return;
+        }
+
+        Text safeMessage = FabricNetwork.createSafeDeathMessage(
+            victim,
+            killer,
+            glitchVictim,
+            glitchKiller
+        );
+
+        PENDING_DEATH_REPLACEMENTS.put(victim.getUuid(), safeMessage);
+    }
+
+    public static Text consumeDeathReplacement(UUID victimId) {
+        return PENDING_DEATH_REPLACEMENTS.remove(victimId);
+    }
 
     @Override
     public void onInitializeServer() {
@@ -103,27 +132,6 @@ public final class GlitchIdentityFabric implements DedicatedServerModInitializer
             )
         );
 
-        ServerLivingEntityEvents.ALLOW_DEATH.register((entity, damageSource, damageAmount) -> {
-            if (!(entity instanceof ServerPlayerEntity victim)) {
-                return true;
-            }
-
-            ServerPlayerEntity killer = FabricNetwork.resolvePlayerAttacker(damageSource);
-
-            boolean glitchVictim = STORE.contains(victim.getUuid());
-            boolean glitchKiller = killer != null && STORE.contains(killer.getUuid());
-
-            if (glitchVictim || glitchKiller) {
-                FabricNetwork.sendGlitch(
-                    victim.getEntityWorld(),
-                    victim,
-                    killer,
-                    glitchVictim,
-                    glitchKiller
-                );
-            }
-
-            return true;
-        });
+        
     }
 }
