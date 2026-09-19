@@ -129,15 +129,6 @@ public final class GlitchIdentityFabric implements ModInitializer {
         return CommandSource.suggestMatching(candidates, builder);
     }
 
-    private static CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestColors(
-        SuggestionsBuilder builder
-    ) {
-        return CommandSource.suggestMatching(
-            List.of("colorful", "white"),
-            builder
-        );
-    }
-
     @Override
     public void onInitialize() {
         GlitchPayload.register();
