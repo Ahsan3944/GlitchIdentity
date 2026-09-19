@@ -96,7 +96,7 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!sender.hasPermission("glitchidentity.admin")) {
-            sender.sendMessage("§cYou must be OP to use GlitchIdentity.");
+            sender.sendMessage("§cYou must have permission §fglitchidentity.admin§c to use GlitchIdentity.");
             return true;
         }
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
@@ -107,9 +107,20 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "add" -> {
                 if (args.length < 2) {
-                    sender.sendMessage("§cUsage: /glitch add <player>");
+                    sender.sendMessage("§cUsage: /glitch add <player|@>");
                     return true;
                 }
+
+                if (args[1].equals("@")) {
+                    int added = 0;
+                    for (Player player : Bukkit.getOnlinePlayers()) {
+                        if (store.add(player.getUniqueId())) added++;
+                    }
+                    if (added > 0) saveStore();
+                    sender.sendMessage("§aGlitch enabled for §f" + added + "§a online player(s).");
+                    return true;
+                }
+
                 Player player = Bukkit.getPlayerExact(args[1]);
                 OfflinePlayer offlinePlayer = player != null
                     ? player
@@ -129,14 +140,30 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
             }
             case "remove" -> {
                 if (args.length < 2) {
-                    sender.sendMessage("§cUsage: /glitch remove <player>");
+                    sender.sendMessage("§cUsage: /glitch remove <player|@>");
                     return true;
                 }
-                OfflinePlayer offlinePlayer = resolveOfflinePlayerWithoutNetwork(args[1]);
+
+                if (args[1].equals("@")) {
+                    int removed = 0;
+                    for (UUID id : store.all()) {
+                        if (store.remove(id)) removed++;
+                    }
+                    if (removed > 0) saveStore();
+                    sender.sendMessage("§aGlitch removed from §f" + removed + "§a configured player(s).");
+                    return true;
+                }
+
+                Player onlinePlayer = Bukkit.getPlayerExact(args[1]);
+                OfflinePlayer offlinePlayer = onlinePlayer != null
+                    ? onlinePlayer
+                    : resolveOfflinePlayerWithoutNetwork(args[1]);
+
                 if (offlinePlayer == null) {
                     sender.sendMessage("§cPlayer is not online or cached. Use the player's UUID or have them join the server first.");
                     return true;
                 }
+
                 if (store.remove(offlinePlayer.getUniqueId())) {
                     saveStore();
                     sender.sendMessage("§aGlitch removed for " + args[1]);
@@ -149,7 +176,7 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                     sender.sendMessage("§7No glitch players configured.");
                     return true;
                 }
-                sender.sendMessage("§dGlitch players:");
+                sender.sendMessage("§dGlitch players §7(" + store.all().size() + "):");
                 store.all().stream()
                     .sorted(Comparator.comparing(UUID::toString))
                     .forEach(id -> {
@@ -161,6 +188,7 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
                 loadStore();
                 sender.sendMessage("§aGlitchIdentity reloaded.");
             }
+            case "version" -> sender.sendMessage(GlitchMessages.VERSION_MESSAGE);
             default -> sender.sendMessage(GlitchMessages.HELP);
         }
         return true;
@@ -170,19 +198,41 @@ public final class GlitchIdentityPaper extends JavaPlugin implements Listener, C
     public List<String> onTabComplete(CommandSender sender, Command command, String label, String[] args) {
         if (args.length == 1) {
             String prefix = args[0].toLowerCase(Locale.ROOT);
-            return List.of("add", "remove", "list", "reload", "help").stream()
+            return List.of("add", "remove", "list", "reload", "version", "help").stream()
                 .filter(value -> value.startsWith(prefix))
                 .toList();
         }
-        if (args.length == 2 &&
-            (args[0].equalsIgnoreCase("add") || args[0].equalsIgnoreCase("remove"))) {
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("add")) {
             String prefix = args[1].toLowerCase(Locale.ROOT);
-            return Bukkit.getOnlinePlayers().stream()
+            List<String> suggestions = new ArrayList<>();
+            suggestions.add("@");
+            Bukkit.getOnlinePlayers().stream()
+                .filter(player -> !store.contains(player.getUniqueId()))
                 .map(Player::getName)
-                .filter(name -> name.toLowerCase(Locale.ROOT).startsWith(prefix))
                 .sorted(String.CASE_INSENSITIVE_ORDER)
+                .forEach(suggestions::add);
+
+            return suggestions.stream()
+                .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(prefix))
                 .toList();
         }
+
+        if (args.length == 2 && args[0].equalsIgnoreCase("remove")) {
+            String prefix = args[1].toLowerCase(Locale.ROOT);
+            List<String> suggestions = new ArrayList<>();
+            suggestions.add("@");
+            Bukkit.getOnlinePlayers().stream()
+                .filter(player -> store.contains(player.getUniqueId()))
+                .map(Player::getName)
+                .sorted(String.CASE_INSENSITIVE_ORDER)
+                .forEach(suggestions::add);
+
+            return suggestions.stream()
+                .filter(value -> value.toLowerCase(Locale.ROOT).startsWith(prefix))
+                .toList();
+        }
+
         return List.of();
     }
 
