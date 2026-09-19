@@ -4,7 +4,7 @@ import in.ultraop.glitchidentity.core.GlitchMessages;
 import in.ultraop.glitchidentity.core.GlitchStore;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.minecraft.command.argument.EntityArgumentType;
+import net.minecraft.command.argument.StringArgumentType;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.text.Text;
@@ -54,6 +54,18 @@ public final class GlitchIdentityFabric implements ModInitializer {
         PENDING_DEATH_REPLACEMENTS.remove(victimId);
     }
 
+    private static UUID resolvePlayerId(net.minecraft.server.MinecraftServer server, String input) {
+        try {
+            return UUID.fromString(input);
+        } catch (IllegalArgumentException ignored) {
+            ServerPlayerEntity player = server.getPlayerManager().getPlayerList().stream()
+                .filter(candidate -> candidate.getName().getString().equalsIgnoreCase(input))
+                .findFirst()
+                .orElse(null);
+            return player == null ? null : player.getUuid();
+        }
+    }
+
     @Override
     public void onInitialize() {
         GlitchPayload.register();
@@ -64,20 +76,30 @@ public final class GlitchIdentityFabric implements ModInitializer {
                 CommandManager.literal("glitch")
                     .requires(CommandManager.requirePermissionLevel(CommandManager.ADMINS_CHECK))
                     .then(CommandManager.literal("add")
-                        .then(CommandManager.argument("player", EntityArgumentType.player())
+                        .then(CommandManager.argument("player", StringArgumentType.word())
                             .executes(ctx -> {
-                                var player = EntityArgumentType.getPlayer(ctx, "player");
-                                boolean added = STORE.add(player.getUuid());
+                                String input = StringArgumentType.getString(ctx, "player");
+                                UUID playerId = resolvePlayerId(ctx.getSource().getServer(), input);
+                                if (playerId == null) {
+                                    ctx.getSource().sendError(Text.literal("Player must be online by name or supplied as a UUID."));
+                                    return 0;
+                                }
+                                boolean added = STORE.add(playerId);
                                 if (added) FabricConfig.save(STORE);
                                 ctx.getSource().sendFeedback(
                                     () -> Text.literal(added ? "§aGlitch enabled." : "§eAlready enabled."), false);
                                 return 1;
                             })))
                     .then(CommandManager.literal("remove")
-                        .then(CommandManager.argument("player", EntityArgumentType.player())
+                        .then(CommandManager.argument("player", StringArgumentType.word())
                             .executes(ctx -> {
-                                var player = EntityArgumentType.getPlayer(ctx, "player");
-                                boolean removed = STORE.remove(player.getUuid());
+                                String input = StringArgumentType.getString(ctx, "player");
+                                UUID playerId = resolvePlayerId(ctx.getSource().getServer(), input);
+                                if (playerId == null) {
+                                    ctx.getSource().sendError(Text.literal("Player must be online by name or supplied as a UUID."));
+                                    return 0;
+                                }
+                                boolean removed = STORE.remove(playerId);
                                 if (removed) FabricConfig.save(STORE);
                                 ctx.getSource().sendFeedback(
                                     () -> Text.literal(removed ? "§aGlitch removed." : "§ePlayer is not configured."), false);
