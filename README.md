@@ -18,20 +18,27 @@ Configured players keep their real identity hidden in death notifications.
 
 ## Commands
 
-- /glitch add <player>
-- /glitch remove <player>
-- /glitch list
-- /glitch reload
-- /glitch help
+- `/glitch add <player>` — Enable glitch for one player.
+- `/glitch add @` — Enable glitch for all currently online players.
+- `/glitch remove <player>` — Disable glitch for one configured player.
+- `/glitch remove @` — Disable glitch for all configured players.
+- `/glitch list` — Show configured glitch players.
+- `/glitch reload` — Reload configuration.
+- `/glitch version` — Show the installed plugin/mod version.
+- `/glitch help` — Show the formatted command help.
 
-All commands are OP-only.
+Tab completion is context-aware:
+- **add** suggests online players who are not configured, plus `@`.
+- **remove** suggests online players who are configured, plus `@`.
+
+All commands are OP/admin permission protected.
 
 ## Architecture
 
 - Shared core: player store, frame generation, messages and message utilities.
 - Fabric: common/server death interception plus client-side ChatHud animation.
 - Paper: Paper/Adventure death-message replacement with DamageSource-based attribution.
-- One Gradle project attempts to package the Fabric and Paper components as a universal artifact.
+- One Gradle project packages the Fabric and Paper components as a universal artifact.
 
 ## Minecraft target
 
