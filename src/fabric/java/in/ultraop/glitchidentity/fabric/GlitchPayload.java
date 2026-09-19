@@ -31,7 +31,7 @@ public record GlitchPayload(
             GlitchPayload::new
         );
 
-    static {
+    public static void register() {
         PayloadTypeRegistry.playS2C().register(ID, CODEC);
     }
 
