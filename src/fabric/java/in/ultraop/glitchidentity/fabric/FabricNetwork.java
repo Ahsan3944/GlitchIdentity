@@ -25,10 +25,23 @@ public final class FabricNetwork {
             ? killer.getDisplayName().getString()
             : "\u0000never-killer\u0000";
 
-        return GlitchTextSanitizer.sanitize(
+        Text sanitized = GlitchTextSanitizer.sanitize(
             deathMessage,
             victimName,
             killerName
+        );
+
+        String victimDisplayName = glitchVictim
+            ? victim.getDisplayName().getString()
+            : "\u0000never-victim-display\u0000";
+        String killerDisplayName = glitchKiller && killer != null
+            ? killer.getDisplayName().getString()
+            : "\u0000never-killer-display\u0000";
+
+        return GlitchTextSanitizer.sanitize(
+            sanitized,
+            victimDisplayName,
+            killerDisplayName
         );
     }
 
