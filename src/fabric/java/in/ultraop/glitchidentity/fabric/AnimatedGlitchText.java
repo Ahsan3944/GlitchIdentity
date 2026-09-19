@@ -8,6 +8,7 @@ import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public final class AnimatedGlitchText implements Text {
     private final Text template;
@@ -22,19 +23,18 @@ public final class AnimatedGlitchText implements Text {
         this.glitchKiller = glitchKiller;
     }
 
-    public static AnimatedGlitchText death(
-        Text template,
-        boolean glitchVictim,
-        boolean glitchKiller
-    ) {
+    public static AnimatedGlitchText death(Text template, boolean glitchVictim, boolean glitchKiller) {
         return new AnimatedGlitchText(template, glitchVictim, glitchKiller);
     }
 
     @Override
     public PlainTextContent getContent() {
-        return (PlainTextContent) Text.literal(
-            renderString(template.getString())
-        ).getContent();
+        StringBuilder root = new StringBuilder();
+        template.getContent().visit(value -> {
+            root.append(value);
+            return Optional.empty();
+        });
+        return (PlainTextContent) Text.literal(renderString(root.toString())).getContent();
     }
 
     @Override
@@ -44,7 +44,7 @@ public final class AnimatedGlitchText implements Text {
 
     @Override
     public List<Text> getSiblings() {
-        return List.of();
+        return template.getSiblings();
     }
 
     @Override
@@ -54,13 +54,33 @@ public final class AnimatedGlitchText implements Text {
 
     @Override
     public OrderedText asOrderedText() {
-        String value = template.getString();
         List<OrderedText> parts = new ArrayList<>();
+        appendRendered(parts, template);
+        return parts.isEmpty() ? OrderedText.EMPTY : OrderedText.concat(parts);
+    }
+
+    private void appendRendered(List<OrderedText> parts, Text text) {
+        appendRoot(parts, text);
+        for (Text sibling : text.getSiblings()) {
+            if (containsMarker(sibling.getString())) {
+                parts.add(AnimatedGlitchText.death(
+                    sibling,
+                    sibling.getString().contains(GlitchTextSanitizer.VICTIM_MARKER),
+                    sibling.getString().contains(GlitchTextSanitizer.KILLER_MARKER)
+                ).asOrderedText());
+            } else {
+                parts.add(sibling.asOrderedText());
+            }
+        }
+    }
+
+    private void appendRoot(List<OrderedText> parts, Text text) {
+        String full = text.getString();
         int cursor = 0;
 
-        while (cursor < value.length()) {
-            int victimAt = glitchVictim ? value.indexOf(GlitchTextSanitizer.VICTIM_MARKER, cursor) : -1;
-            int killerAt = glitchKiller ? value.indexOf(GlitchTextSanitizer.KILLER_MARKER, cursor) : -1;
+        while (cursor < full.length()) {
+            int victimAt = glitchVictim ? full.indexOf(GlitchTextSanitizer.VICTIM_MARKER, cursor) : -1;
+            int killerAt = glitchKiller ? full.indexOf(GlitchTextSanitizer.KILLER_MARKER, cursor) : -1;
 
             int markerAt;
             GlitchSegment segment;
@@ -80,24 +100,31 @@ public final class AnimatedGlitchText implements Text {
             }
 
             if (markerAt < 0) {
-                parts.add(Text.literal(value.substring(cursor)).asOrderedText());
+                parts.add(Text.literal(full.substring(cursor))
+                    .setStyle(text.getStyle())
+                    .asOrderedText());
                 break;
             }
 
             if (markerAt > cursor) {
-                parts.add(Text.literal(value.substring(cursor, markerAt)).asOrderedText());
+                parts.add(Text.literal(full.substring(cursor, markerAt))
+                    .setStyle(text.getStyle())
+                    .asOrderedText());
             }
 
-            parts.add(segment.asOrderedText());
+            parts.add(segment.asOrderedText(text.getStyle()));
 
-            if (segment == victimGlitch) {
-                cursor = markerAt + GlitchTextSanitizer.VICTIM_MARKER.length();
-            } else {
-                cursor = markerAt + GlitchTextSanitizer.KILLER_MARKER.length();
-            }
+            cursor = markerAt + (
+                segment == victimGlitch
+                    ? GlitchTextSanitizer.VICTIM_MARKER.length()
+                    : GlitchTextSanitizer.KILLER_MARKER.length()
+            );
         }
+    }
 
-        return parts.isEmpty() ? OrderedText.EMPTY : OrderedText.concat(parts);
+    private static boolean containsMarker(String value) {
+        return value.contains(GlitchTextSanitizer.VICTIM_MARKER)
+            || value.contains(GlitchTextSanitizer.KILLER_MARKER);
     }
 
     private String renderString(String value) {
@@ -114,7 +141,6 @@ public final class AnimatedGlitchText implements Text {
 
     private static final class GlitchSegment {
         private static final long FRAME_HOLD_NANOS = 30_000_000L;
-
         private GlitchFrameGenerator.Frame frame = GlitchFrameGenerator.next();
         private long frameAt = System.nanoTime();
 
@@ -127,7 +153,7 @@ public final class AnimatedGlitchText implements Text {
             return frame;
         }
 
-        private OrderedText asOrderedText() {
+        private OrderedText asOrderedText(Style baseStyle) {
             return visitor -> {
                 GlitchFrameGenerator.Frame current = snapshot();
                 int[] codePoints = current.text().codePoints().toArray();
@@ -135,13 +161,12 @@ public final class AnimatedGlitchText implements Text {
                 for (int i = 0; i < codePoints.length; i++) {
                     if (!visitor.accept(
                         i,
-                        Style.EMPTY.withColor(current.colors()[i] & 0xFFFFFF),
+                        baseStyle.withColor(current.colors()[i] & 0xFFFFFF),
                         codePoints[i]
                     )) {
                         return false;
                     }
                 }
-
                 return true;
             };
         }
