@@ -4,7 +4,6 @@ import in.ultraop.glitchidentity.core.GlitchMessages;
 import in.ultraop.glitchidentity.core.GlitchStore;
 import net.fabricmc.api.DedicatedServerModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.entity.event.v1.ServerLivingEntityEvents;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.server.command.CommandManager;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -21,6 +20,16 @@ public final class GlitchIdentityFabric implements DedicatedServerModInitializer
 
     public static void prepareDeath(ServerPlayerEntity victim, net.minecraft.entity.damage.DamageSource damageSource) {
         ServerPlayerEntity killer = FabricNetwork.resolvePlayerAttacker(damageSource);
+
+        if (killer == null) {
+            String deathLine = victim.getDamageTracker().getDeathMessage().getString();
+            killer = victim.getEntityWorld().getServer().getPlayerManager().getPlayerList().stream()
+                .filter(player -> !player.getUuid().equals(victim.getUuid()))
+                .filter(player -> STORE.contains(player.getUuid()))
+                .filter(player -> deathLine.contains(player.getName().getString()))
+                .findFirst()
+                .orElse(null);
+        }
 
         boolean glitchVictim = STORE.contains(victim.getUuid());
         boolean glitchKiller = killer != null && STORE.contains(killer.getUuid());
@@ -132,6 +141,5 @@ public final class GlitchIdentityFabric implements DedicatedServerModInitializer
             )
         );
 
-        
     }
 }
